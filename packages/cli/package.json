@@ -1,0 +1,22 @@
+{
+  "name": "@outlook-toolkit/cli",
+  "version": "0.1.0",
+  "type": "module",
+  "bin": {
+    "outlook": "src/bin.ts"
+  },
+  "scripts": {
+    "dev": "bun run src/bin.ts",
+    "build": "bun build ./src/bin.ts --outdir ./dist --target node",
+    "test": "bun test",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@outlook-toolkit/sdk": "workspace:*",
+    "@stricli/core": "^1.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "@types/bun": "latest"
+  }
+}
