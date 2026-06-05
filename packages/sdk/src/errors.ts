@@ -9,8 +9,15 @@ export class OutlookError extends Error {
   }
 }
 
+export class OutlookConfigError extends OutlookError {
+  constructor(message: string) {
+    super(message, "CONFIG_ERROR");
+    this.name = "OutlookConfigError";
+  }
+}
+
 export class OutlookAuthError extends OutlookError {
-  constructor(message = "Authentication failed. Check your API key.") {
+  constructor(message = "Not authenticated. Run `outlook auth login` first.") {
     super(message, "AUTH_ERROR", 401);
     this.name = "OutlookAuthError";
   }
@@ -18,7 +25,17 @@ export class OutlookAuthError extends OutlookError {
 
 export class OutlookNotFoundError extends OutlookError {
   constructor(resource: string, id: string) {
-    super(`${resource} with id "${id}" not found`, "NOT_FOUND", 404);
+    super(`${resource} "${id}" not found`, "NOT_FOUND", 404);
     this.name = "OutlookNotFoundError";
+  }
+}
+
+export class OutlookRateLimitError extends OutlookError {
+  constructor(retryAfterSeconds?: number) {
+    const msg = retryAfterSeconds
+      ? `Rate limited by Microsoft Graph. Retry after ${retryAfterSeconds}s.`
+      : "Rate limited by Microsoft Graph API.";
+    super(msg, "RATE_LIMIT", 429);
+    this.name = "OutlookRateLimitError";
   }
 }

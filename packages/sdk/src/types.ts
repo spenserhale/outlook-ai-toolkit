@@ -1,66 +1,118 @@
 import { z } from "zod";
 
-// ---------------------------------------------------------------------------
-// Configuration
-// ---------------------------------------------------------------------------
-
+// Config
 export const OutlookConfigSchema = z.object({
-  apiKey: z.string().min(1, "API key is required"),
-  baseUrl: z.string().url().default("https://api.outlook.com"),
+  clientId: z.string().min(1, "OUTLOOK_CLIENT_ID is required"),
+  tenantId: z.string().min(1, "OUTLOOK_TENANT_ID is required"),
 });
-
 export type OutlookConfig = z.infer<typeof OutlookConfigSchema>;
 
-// ---------------------------------------------------------------------------
-// API Resource schemas -- add your own here
-// ---------------------------------------------------------------------------
-
-export const ResourceSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  createdAt: z.string().datetime(),
-  updatedAt: z.string().datetime(),
+// Token storage
+export const TokenDataSchema = z.object({
+  accessToken: z.string(),
+  refreshToken: z.string(),
+  accessTokenExpiry: z.number(),
+  refreshTokenExpiry: z.number(),
+  userEmail: z.string().optional(),
 });
+export type TokenData = z.infer<typeof TokenDataSchema>;
 
-export type Resource = z.infer<typeof ResourceSchema>;
-
-export const ListResourcesParamsSchema = z.object({
-  page: z.number().int().positive().default(1),
-  limit: z.number().int().positive().max(100).default(20),
+// Auth status (non-sensitive, safe to display)
+export const AuthStatusSchema = z.object({
+  authenticated: z.boolean(),
+  userEmail: z.string().optional(),
+  accessTokenExpiry: z.number().optional(),
+  refreshTokenExpiry: z.number().optional(),
 });
+export type AuthStatus = z.infer<typeof AuthStatusSchema>;
 
-export type ListResourcesParams = z.infer<typeof ListResourcesParamsSchema>;
-
-export const CreateResourceParamsSchema = z.object({
-  name: z.string().min(1),
+// Graph API — message types
+export const MessageBodySchema = z.object({
+  contentType: z.enum(["text", "HTML"]),
+  content: z.string(),
 });
+export type MessageBody = z.infer<typeof MessageBodySchema>;
 
-export type CreateResourceParams = z.infer<typeof CreateResourceParamsSchema>;
-
-// ---------------------------------------------------------------------------
-// API Response wrappers
-// ---------------------------------------------------------------------------
-
-export const PaginatedResponseSchema = <T extends z.ZodTypeAny>(itemSchema: T) =>
-  z.object({
-    data: z.array(itemSchema),
-    total: z.number(),
-    page: z.number(),
-    limit: z.number(),
-  });
-
-export type PaginatedResponse<T> = {
-  data: T[];
-  total: number;
-  page: number;
-  limit: number;
-};
-
-export const ErrorResponseSchema = z.object({
-  error: z.object({
-    code: z.string(),
-    message: z.string(),
-  }),
+export const EmailAddressSchema = z.object({
+  address: z.string(),
+  name: z.string().optional(),
 });
+export type EmailAddress = z.infer<typeof EmailAddressSchema>;
 
-export type ErrorResponse = z.infer<typeof ErrorResponseSchema>;
+export const RecipientSchema = z.object({
+  emailAddress: EmailAddressSchema,
+});
+export type Recipient = z.infer<typeof RecipientSchema>;
+
+export const MessageSchema = z
+  .object({
+    id: z.string(),
+    subject: z.string().nullable().optional(),
+    bodyPreview: z.string().optional(),
+    body: MessageBodySchema.optional(),
+    from: RecipientSchema.optional(),
+    toRecipients: z.array(RecipientSchema).optional(),
+    receivedDateTime: z.string().optional(),
+    sentDateTime: z.string().optional(),
+    isRead: z.boolean().optional(),
+    isDraft: z.boolean().optional(),
+    conversationId: z.string().optional(),
+  })
+  .passthrough();
+export type Message = z.infer<typeof MessageSchema>;
+
+export const MailListResponseSchema = z.object({
+  value: z.array(MessageSchema),
+  "@odata.nextLink": z.string().optional(),
+});
+export type MailListResponse = z.infer<typeof MailListResponseSchema>;
+
+export const DeltaResponseSchema = z.object({
+  value: z.array(MessageSchema),
+  "@odata.nextLink": z.string().optional(),
+  "@odata.deltaLink": z.string().optional(),
+});
+export type DeltaResponse = z.infer<typeof DeltaResponseSchema>;
+
+// Mail operation params
+export const ListMailParamsSchema = z.object({
+  folder: z.string().default("inbox"),
+  limit: z.number().int().positive().max(999).default(25),
+  cursor: z.string().optional(),
+  filter: z.string().optional(),
+  select: z.string().optional(),
+  orderby: z.string().optional(),
+});
+export type ListMailParams = z.infer<typeof ListMailParamsSchema>;
+
+export const SendMailParamsSchema = z.object({
+  to: z.string().email(),
+  subject: z.string(),
+  body: z.string(),
+  contentType: z.enum(["text", "HTML"]).default("HTML"),
+});
+export type SendMailParams = z.infer<typeof SendMailParamsSchema>;
+
+export const ReplyParamsSchema = z.object({
+  body: z.string(),
+  contentType: z.enum(["text", "HTML"]).default("HTML"),
+});
+export type ReplyParams = z.infer<typeof ReplyParamsSchema>;
+
+export const DraftParamsSchema = z.object({
+  to: z.string().email(),
+  subject: z.string(),
+  body: z.string(),
+  contentType: z.enum(["text", "HTML"]).default("HTML"),
+});
+export type DraftParams = z.infer<typeof DraftParamsSchema>;
+
+// Profile storage
+export const ProfileSchema = z.object({
+  clientId: z.string().min(1),
+  tenantId: z.string().min(1),
+});
+export type Profile = z.infer<typeof ProfileSchema>;
+
+export const ProfilesFileSchema = z.record(z.string(), ProfileSchema);
+export type ProfilesFile = z.infer<typeof ProfilesFileSchema>;
