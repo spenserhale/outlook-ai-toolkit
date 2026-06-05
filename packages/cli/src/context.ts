@@ -2,7 +2,6 @@ import {
   resolveConfig,
   ProfileStore,
   type OutlookConfig,
-  OutlookConfigError,
 } from "@outlook-toolkit/sdk";
 
 export async function resolveCliConfig(profile?: string): Promise<OutlookConfig> {
