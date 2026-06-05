@@ -46,15 +46,9 @@ const AGENT_CONTEXT = {
 export const agentContextCommand = buildCommand({
   docs: { brief: "Output machine-readable CLI schema for agent use" },
   parameters: {
-    flags: {
-      json: {
-        kind: "boolean",
-        brief: "Output as JSON (default: true)",
-        default: true,
-      },
-    },
+    flags: {},
   },
-  async func(this: void, _flags: { json: boolean }) {
+  async func(this: void) {
     console.log(JSON.stringify(AGENT_CONTEXT, null, 2));
   },
 });

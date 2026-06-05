@@ -287,7 +287,7 @@ export class OutlookAuth {
       accessToken: tokens.access_token,
       refreshToken: tokens.refresh_token ?? refreshToken,
       accessTokenExpiry: Date.now() + tokens.expires_in * 1000,
-      refreshTokenExpiry: existing?.refreshTokenExpiry ?? Date.now() + REFRESH_TOKEN_LIFETIME_MS,
+      refreshTokenExpiry: Date.now() + REFRESH_TOKEN_LIFETIME_MS,
       userEmail: existing?.userEmail,
     });
     return tokens.access_token;

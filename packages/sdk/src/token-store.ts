@@ -22,22 +22,22 @@ async function getKeytar(): Promise<typeof import("keytar") | null> {
 }
 
 function encrypt(plaintext: string, key: Buffer): string {
-  const iv = randomBytes(16);
-  const cipher = createCipheriv("aes-256-cbc", key, iv);
-  let enc = cipher.update(plaintext, "utf8", "hex");
-  enc += cipher.final("hex");
-  return `${iv.toString("hex")}:${enc}`;
+  const iv = randomBytes(12);
+  const cipher = createCipheriv("aes-256-gcm", key, iv);
+  const ciphertext = Buffer.concat([cipher.update(plaintext, "utf8"), cipher.final()]);
+  const authTag = cipher.getAuthTag();
+  const payload = Buffer.concat([iv, authTag, ciphertext]);
+  return payload.toString("base64");
 }
 
-function decrypt(ciphertext: string, key: Buffer): string {
-  const colonIdx = ciphertext.indexOf(":");
-  const ivHex = ciphertext.slice(0, colonIdx);
-  const enc = ciphertext.slice(colonIdx + 1);
-  const iv = Buffer.from(ivHex, "hex");
-  const decipher = createDecipheriv("aes-256-cbc", key, iv);
-  let dec = decipher.update(enc, "hex", "utf8");
-  dec += decipher.final("utf8");
-  return dec;
+function decrypt(encoded: string, key: Buffer): string {
+  const buf = Buffer.from(encoded, "base64");
+  const iv = buf.subarray(0, 12);
+  const authTag = buf.subarray(12, 28);
+  const ciphertext = buf.subarray(28);
+  const decipher = createDecipheriv("aes-256-gcm", key, iv);
+  decipher.setAuthTag(authTag);
+  return Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString("utf8");
 }
 
 async function getOrCreateKey(dir: string): Promise<Buffer> {

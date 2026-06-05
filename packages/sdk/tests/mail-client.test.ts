@@ -32,6 +32,15 @@ describe("MailClient.list", () => {
     expect(path).toBe("/me/mailFolders/sentitems/messages");
     expect((opts as { $top?: number }).$top).toBe(10);
   });
+
+  it("fetches cursor URL directly when cursor is provided", async () => {
+    const gc = makeGraphClient();
+    const client = new MailClient(gc);
+    const cursor = "https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages?$skiptoken=abc123";
+    await client.list({ cursor });
+    const [path] = (gc.list as ReturnType<typeof mock>).mock.calls[0] as [string];
+    expect(path).toBe(cursor);
+  });
 });
 
 describe("MailClient.get", () => {

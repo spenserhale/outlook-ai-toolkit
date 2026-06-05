@@ -15,6 +15,10 @@ export class MailClient {
   constructor(private readonly graph: GraphClient) {}
 
   async list(params: Partial<ListMailParams> = {}): Promise<MailListResponse> {
+    if (params.cursor) {
+      const result = await this.graph.list<Message>(params.cursor, {});
+      return result as MailListResponse;
+    }
     const folder = params.folder ?? "inbox";
     const opts = {
       $top: params.limit ?? 25,
@@ -23,14 +27,14 @@ export class MailClient {
       ...(params.orderby && { $orderby: params.orderby }),
     };
     const result = await this.graph.list<Message>(
-      `/me/mailFolders/${folder}/messages`,
+      `/me/mailFolders/${encodeURIComponent(folder)}/messages`,
       opts
     );
     return result as MailListResponse;
   }
 
   async get(id: string): Promise<Message> {
-    return this.graph.get<Message>(`/me/messages/${id}`);
+    return this.graph.get<Message>(`/me/messages/${encodeURIComponent(id)}`);
   }
 
   async send(params: SendMailParams): Promise<void> {
@@ -48,7 +52,7 @@ export class MailClient {
   }
 
   async reply(id: string, params: ReplyParams): Promise<void> {
-    await this.graph.post(`/me/messages/${id}/reply`, {
+    await this.graph.post(`/me/messages/${encodeURIComponent(id)}/reply`, {
       message: {
         body: {
           contentType: params.contentType ?? "HTML",

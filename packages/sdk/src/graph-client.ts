@@ -33,7 +33,9 @@ const DEFAULT_RETRY: RetryOptions = {
   maxDelayMs: 30_000,
 };
 
-const RETRYABLE = new Set([429, 503, 504]);
+const RETRYABLE_ALL_METHODS = new Set([429]);
+const RETRYABLE_SAFE_METHODS = new Set([503, 504]);
+const SAFE_METHODS = new Set(["GET", "DELETE"]);
 
 function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
@@ -116,7 +118,12 @@ export class GraphClient {
         throw new OutlookNotFoundError("resource", path);
       }
 
-      if (RETRYABLE.has(res.status) && attempt <= this.retry.maxAttempts) {
+      const isRetryable =
+        (RETRYABLE_ALL_METHODS.has(res.status) ||
+          (RETRYABLE_SAFE_METHODS.has(res.status) && SAFE_METHODS.has(method))) &&
+        attempt <= this.retry.maxAttempts;
+
+      if (isRetryable) {
         const err = new GraphResponseError(res);
         const delay = calcDelay(err, attempt, this.retry);
         await sleep(delay);

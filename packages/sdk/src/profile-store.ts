@@ -26,7 +26,7 @@ export class ProfileStore {
   private async write(data: ProfilesFile): Promise<void> {
     const dir = join(this.filePath, "..");
     mkdirSync(dir, { recursive: true });
-    await writeFile(this.filePath, JSON.stringify(data, null, 2), "utf8");
+    await writeFile(this.filePath, JSON.stringify(data, null, 2), { encoding: "utf8", mode: 0o600 });
   }
 
   async save(name: string, profile: Profile): Promise<void> {
