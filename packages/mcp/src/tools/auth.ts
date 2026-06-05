@@ -1,9 +1,19 @@
 import type { FastMCP } from "fastmcp";
 import { z } from "zod";
-import { resolveConfig, OutlookAuth, TokenStore } from "@outlook-toolkit/sdk";
+import { resolveConfig, OutlookAuth, TokenStore, OutlookConfigError } from "@outlook-toolkit/sdk";
 
 function getAuth() {
-  const config = resolveConfig();
+  let config;
+  try {
+    config = resolveConfig();
+  } catch (err) {
+    if (err instanceof OutlookConfigError) {
+      throw new Error(
+        "Outlook not configured. Set OUTLOOK_CLIENT_ID and OUTLOOK_TENANT_ID environment variables."
+      );
+    }
+    throw err;
+  }
   const store = new TokenStore(config.clientId);
   return { auth: new OutlookAuth(config, store), config };
 }
@@ -39,7 +49,7 @@ export function registerAuthTools(server: FastMCP) {
     execute: async () => {
       const { auth } = getAuth();
       await auth.logout();
-      return "Signed out. Run `outlook auth login` to re-authenticate.";
+      return JSON.stringify({ status: "signed_out", message: "Signed out. Run `outlook auth login` to re-authenticate." }, null, 2);
     },
   });
 }

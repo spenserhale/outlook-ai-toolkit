@@ -7,10 +7,21 @@ import {
   GraphClient,
   MailClient,
   OutlookAuthError,
+  OutlookConfigError,
 } from "@outlook-toolkit/sdk";
 
 async function getMailClient(): Promise<MailClient> {
-  const config = resolveConfig();
+  let config;
+  try {
+    config = resolveConfig();
+  } catch (err) {
+    if (err instanceof OutlookConfigError) {
+      throw new Error(
+        "Outlook not configured. Set OUTLOOK_CLIENT_ID and OUTLOOK_TENANT_ID environment variables."
+      );
+    }
+    throw err;
+  }
   const store = new TokenStore(config.clientId);
   const auth = new OutlookAuth(config, store);
   try {
@@ -35,10 +46,12 @@ export function registerMailTools(server: FastMCP) {
       limit: z.number().int().positive().max(999).default(25).describe("Max messages to return"),
       cursor: z.string().optional().describe("Pagination cursor from a previous call's nextLink"),
       filter: z.string().optional().describe("OData $filter expression"),
+      select: z.string().optional().describe("Comma-separated fields to return (e.g. \"id,subject,from,receivedDateTime\")"),
+      orderby: z.string().optional().describe("OData orderby expression (e.g. \"receivedDateTime desc\")"),
     }),
     execute: async (args) => {
       const mail = await getMailClient();
-      const result = await mail.list({ folder: args.folder, limit: args.limit, cursor: args.cursor, filter: args.filter });
+      const result = await mail.list({ folder: args.folder, limit: args.limit, cursor: args.cursor, filter: args.filter, select: args.select, orderby: args.orderby });
       return JSON.stringify(result, null, 2);
     },
   });
@@ -63,7 +76,7 @@ export function registerMailTools(server: FastMCP) {
       to: z.string().email().describe("Recipient email address"),
       subject: z.string().describe("Email subject"),
       body: z.string().describe("Email body (HTML supported)"),
-      contentType: z.enum(["HTML", "text"]).default("HTML").describe("Body content type"),
+      contentType: z.enum(["text", "HTML"]).default("HTML").describe("Body content type"),
     }),
     execute: async (args) => {
       const mail = await getMailClient();
@@ -78,7 +91,7 @@ export function registerMailTools(server: FastMCP) {
     parameters: z.object({
       id: z.string().describe("Message ID to reply to"),
       body: z.string().describe("Reply body (HTML supported)"),
-      contentType: z.enum(["HTML", "text"]).default("HTML").describe("Body content type"),
+      contentType: z.enum(["text", "HTML"]).default("HTML").describe("Body content type"),
     }),
     execute: async (args) => {
       const mail = await getMailClient();
@@ -94,7 +107,7 @@ export function registerMailTools(server: FastMCP) {
       to: z.string().email().describe("Recipient email address"),
       subject: z.string().describe("Email subject"),
       body: z.string().describe("Email body (HTML supported)"),
-      contentType: z.enum(["HTML", "text"]).default("HTML").describe("Body content type"),
+      contentType: z.enum(["text", "HTML"]).default("HTML").describe("Body content type"),
     }),
     execute: async (args) => {
       const mail = await getMailClient();
