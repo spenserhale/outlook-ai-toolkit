@@ -1,0 +1,118 @@
+import type { FastMCP } from "fastmcp";
+import { z } from "zod";
+import {
+  resolveConfig,
+  OutlookAuth,
+  TokenStore,
+  GraphClient,
+  MailClient,
+  OutlookAuthError,
+} from "@outlook-toolkit/sdk";
+
+async function getMailClient(): Promise<MailClient> {
+  const config = resolveConfig();
+  const store = new TokenStore(config.clientId);
+  const auth = new OutlookAuth(config, store);
+  try {
+    const token = await auth.acquireToken();
+    return new MailClient(new GraphClient(token));
+  } catch (err) {
+    if (err instanceof OutlookAuthError) {
+      throw new Error(
+        `Not authenticated. Run \`outlook auth login\` in your terminal with OUTLOOK_CLIENT_ID=${config.clientId} set.`
+      );
+    }
+    throw err;
+  }
+}
+
+export function registerMailTools(server: FastMCP) {
+  server.addTool({
+    name: "outlook_mail_list",
+    description: "List messages in an Outlook mail folder (default: inbox). Returns messages and a nextLink cursor for pagination.",
+    parameters: z.object({
+      folder: z.string().default("inbox").describe("Folder name (inbox, sentitems, drafts, deleteditems)"),
+      limit: z.number().int().positive().max(999).default(25).describe("Max messages to return"),
+      cursor: z.string().optional().describe("Pagination cursor from a previous call's nextLink"),
+      filter: z.string().optional().describe("OData $filter expression"),
+    }),
+    execute: async (args) => {
+      const mail = await getMailClient();
+      const result = await mail.list({ folder: args.folder, limit: args.limit, cursor: args.cursor, filter: args.filter });
+      return JSON.stringify(result, null, 2);
+    },
+  });
+
+  server.addTool({
+    name: "outlook_mail_get",
+    description: "Get a single Outlook message by its ID, including the full body.",
+    parameters: z.object({
+      id: z.string().describe("Message ID"),
+    }),
+    execute: async (args) => {
+      const mail = await getMailClient();
+      const message = await mail.get(args.id);
+      return JSON.stringify(message, null, 2);
+    },
+  });
+
+  server.addTool({
+    name: "outlook_mail_send",
+    description: "Send an email from the authenticated Outlook account.",
+    parameters: z.object({
+      to: z.string().email().describe("Recipient email address"),
+      subject: z.string().describe("Email subject"),
+      body: z.string().describe("Email body (HTML supported)"),
+      contentType: z.enum(["HTML", "text"]).default("HTML").describe("Body content type"),
+    }),
+    execute: async (args) => {
+      const mail = await getMailClient();
+      await mail.send({ to: args.to, subject: args.subject, body: args.body, contentType: args.contentType });
+      return JSON.stringify({ status: "sent", to: args.to }, null, 2);
+    },
+  });
+
+  server.addTool({
+    name: "outlook_mail_reply",
+    description: "Reply to an existing Outlook message thread.",
+    parameters: z.object({
+      id: z.string().describe("Message ID to reply to"),
+      body: z.string().describe("Reply body (HTML supported)"),
+      contentType: z.enum(["HTML", "text"]).default("HTML").describe("Body content type"),
+    }),
+    execute: async (args) => {
+      const mail = await getMailClient();
+      await mail.reply(args.id, { body: args.body, contentType: args.contentType });
+      return JSON.stringify({ status: "replied", messageId: args.id }, null, 2);
+    },
+  });
+
+  server.addTool({
+    name: "outlook_mail_create_draft",
+    description: "Create a draft email without sending it. Returns the draft message including its ID.",
+    parameters: z.object({
+      to: z.string().email().describe("Recipient email address"),
+      subject: z.string().describe("Email subject"),
+      body: z.string().describe("Email body (HTML supported)"),
+      contentType: z.enum(["HTML", "text"]).default("HTML").describe("Body content type"),
+    }),
+    execute: async (args) => {
+      const mail = await getMailClient();
+      const draft = await mail.createDraft({ to: args.to, subject: args.subject, body: args.body, contentType: args.contentType });
+      return JSON.stringify(draft, null, 2);
+    },
+  });
+
+  server.addTool({
+    name: "outlook_mail_sync",
+    description: "Delta sync inbox — returns only messages that changed since the last sync. On first call, omit deltaLink to get the full initial sync. Save the returned deltaLink and pass it on subsequent calls to get only changes.",
+    parameters: z.object({
+      deltaLink: z.string().optional().describe("Delta link from a previous sync call. Omit for initial full sync."),
+    }),
+    execute: async (args) => {
+      const mail = await getMailClient();
+      const result = await mail.sync(args.deltaLink);
+      return JSON.stringify(result, null, 2);
+    },
+  });
+}
