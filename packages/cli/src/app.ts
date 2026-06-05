@@ -1,27 +1,18 @@
 import { buildApplication, buildRouteMap } from "@stricli/core";
-import { listCommand } from "./commands/list.js";
-import { getCommand } from "./commands/get.js";
-import { createCommand } from "./commands/create.js";
-import { deleteCommand } from "./commands/delete.js";
-
-const resourceRoutes = buildRouteMap({
-  routes: {
-    list: listCommand,
-    get: getCommand,
-    create: createCommand,
-    delete: deleteCommand,
-  },
-  docs: {
-    brief: "Manage Outlook resources",
-  },
-});
+import { authRoutes } from "./commands/auth.js";
+import { profileRoutes } from "./commands/profile.js";
+import { mailRoutes } from "./commands/mail.js";
+import { agentContextCommand } from "./commands/agent-context.js";
 
 const routes = buildRouteMap({
   routes: {
-    resources: resourceRoutes,
+    auth: authRoutes,
+    profile: profileRoutes,
+    mail: mailRoutes,
+    "agent-context": agentContextCommand,
   },
   docs: {
-    brief: "SDK, CLI, and MCP server for Microsoft Outlook",
+    brief: "SDK, CLI, and MCP server for Microsoft Outlook via Microsoft Graph",
   },
 });
 
