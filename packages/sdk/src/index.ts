@@ -13,11 +13,15 @@ export type {
   MailListResponse,
   DeltaResponse,
   ListMailParams,
+  GetMailParams,
   SendMailParams,
   ReplyParams,
   DraftParams,
   Profile,
   ProfilesFile,
+  BodyFormat,
+  ListBodyMode,
+  OutputFormat,
 } from "./types.js";
 export {
   OutlookConfigSchema,
@@ -27,11 +31,15 @@ export {
   MailListResponseSchema,
   DeltaResponseSchema,
   ListMailParamsSchema,
+  GetMailParamsSchema,
   SendMailParamsSchema,
   ReplyParamsSchema,
   DraftParamsSchema,
   ProfileSchema,
   ProfilesFileSchema,
+  BodyFormatSchema,
+  ListBodyModeSchema,
+  OutputFormatSchema,
 } from "./types.js";
 
 // Errors
@@ -60,3 +68,7 @@ export { ProfileStore } from "./profile-store.js";
 export { GraphClient } from "./graph-client.js";
 export type { ODataOptions, ODataListResponse } from "./graph-client.js";
 export { MailClient } from "./mail-client.js";
+
+// Output + body rendering
+export { renderBody } from "./body.js";
+export { renderOutput } from "./format.js";
