@@ -153,6 +153,21 @@ describe("MailClient.list body modes", () => {
     const [, opts] = (gc.list as ReturnType<typeof mock>).mock.calls[0] as [string, { $select?: string }];
     expect(opts.$select).toBe("id,subject");
   });
+
+  it("applies body post-processing even when an explicit select is given", async () => {
+    const sample = {
+      value: [
+        { id: "1", bodyPreview: "snip", body: { contentType: "HTML", content: "<p>x</p>" } },
+      ],
+    };
+    const gc = makeGraphClient({ list: mock(() => Promise.resolve(structuredClone(sample))) });
+    const client = new MailClient(gc);
+    const res = await client.list({ select: "id,body,bodyPreview" }); // default body mode = preview
+    const [, opts] = (gc.list as ReturnType<typeof mock>).mock.calls[0] as [string, { $select?: string }];
+    expect(opts.$select).toBe("id,body,bodyPreview"); // honored verbatim
+    expect(res.value[0]!.body).toBeUndefined();       // preview mode still strips body
+    expect(res.value[0]!.bodyPreview).toBe("snip");
+  });
 });
 
 describe("MailClient.get body conversion", () => {
