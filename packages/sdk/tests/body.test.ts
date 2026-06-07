@@ -21,7 +21,7 @@ describe("renderBody", () => {
     expect(out).toContain("**world**");
     expect(out).toContain("[link](https://x.co)");
     expect(out).toContain("# Title");
-    expect(out).toMatch(/[-*] one/);
+    expect(out).toMatch(/[-*]\s+one/);
   });
 
   it("already-plain text source passes through for every target", () => {

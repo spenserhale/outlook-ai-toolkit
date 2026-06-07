@@ -7,29 +7,6 @@ const turndown = new TurndownService({
   codeBlockStyle: "fenced",
 });
 
-// Turndown's default list rule pads each marker to a fixed width
-// (e.g. "*   item"). Override it to emit a single space ("* item")
-// for cleaner, more conventional Markdown output.
-turndown.addRule("listItem", {
-  filter: "li",
-  replacement(content, node, options) {
-    const body = content
-      .replace(/^\n+/, "")
-      .replace(/\n+$/, "\n")
-      .replace(/\n/gm, "\n    ");
-    const parent = node.parentNode as Element | null;
-    let prefix = `${options.bulletListMarker} `;
-    if (parent && parent.nodeName === "OL") {
-      const start = parent.getAttribute("start");
-      const index = Array.prototype.indexOf.call(parent.children, node);
-      prefix = `${start ? Number(start) + index : index + 1}. `;
-    }
-    const trailing =
-      node.nextSibling && !/\n$/.test(body) ? "\n" : "";
-    return prefix + body + trailing;
-  },
-});
-
 /**
  * Render an email body into the requested format.
  *
