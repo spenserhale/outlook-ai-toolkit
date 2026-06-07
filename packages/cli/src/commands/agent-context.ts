@@ -24,12 +24,12 @@ const AGENT_CONTEXT = {
       delete: { brief: "Delete a profile", args: ["name"], flags: { "--force": "boolean" } },
     },
     mail: {
-      list: { brief: "List messages", flags: { "--folder": "string (default: inbox)", "--limit": "number (default: 25)", "--cursor": "string", "--json": "boolean", "--csv": "boolean", "--profile": "string (optional)" } },
-      get: { brief: "Get message by ID", args: ["id"], flags: { "--json": "boolean", "--profile": "string (optional)" } },
-      send: { brief: "Send an email", flags: { "--to": "string (email)", "--subject": "string", "--body": "string (HTML)", "--dry-run": "boolean", "--json": "boolean", "--profile": "string (optional)" } },
-      reply: { brief: "Reply to a message", args: ["id"], flags: { "--body": "string (HTML)", "--dry-run": "boolean", "--json": "boolean", "--profile": "string (optional)" } },
-      draft: { brief: "Create a draft email", flags: { "--to": "string (email)", "--subject": "string", "--body": "string (HTML)", "--dry-run": "boolean", "--json": "boolean", "--profile": "string (optional)" } },
-      sync: { brief: "Delta sync inbox", flags: { "--delta-link": "string (optional)", "--json": "boolean", "--profile": "string (optional)" } },
+      list: { brief: "List messages", flags: { "--folder": "string (default: inbox)", "--limit": "number (default: 25)", "--cursor": "string", "--body": "none|preview|full (default: preview)", "--bodyFormat": "text|markdown|html (default: text)", "--toon": "boolean (default: true)", "--json": "boolean", "--csv": "boolean", "--profile": "string (optional)" } },
+      get: { brief: "Get message by ID", args: ["id"], flags: { "--bodyFormat": "text|markdown|html (default: text)", "--toon": "boolean (default: true)", "--json": "boolean", "--profile": "string (optional)" } },
+      send: { brief: "Send an email", flags: { "--to": "string (email)", "--subject": "string", "--body": "string (HTML)", "--dryRun": "boolean", "--json": "boolean", "--profile": "string (optional)" } },
+      reply: { brief: "Reply to a message", args: ["id"], flags: { "--body": "string (HTML)", "--dryRun": "boolean", "--json": "boolean", "--profile": "string (optional)" } },
+      draft: { brief: "Create a draft email", flags: { "--to": "string (email)", "--subject": "string", "--body": "string (HTML)", "--dryRun": "boolean", "--json": "boolean", "--profile": "string (optional)" } },
+      sync: { brief: "Delta sync inbox", flags: { "--deltaLink": "string (optional)", "--json": "boolean", "--profile": "string (optional)" } },
     },
   },
   exit_codes: {
