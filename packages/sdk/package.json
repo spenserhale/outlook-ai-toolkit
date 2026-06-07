@@ -22,6 +22,7 @@
   "devDependencies": {
     "typescript": "^5.7.0",
     "@types/bun": "latest",
-    "@types/turndown": "^5.0.5"
+    "@types/turndown": "^5.0.5",
+    "@types/html-to-text": "^9.0.4"
   }
 }

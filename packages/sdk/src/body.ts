@@ -1,6 +1,3 @@
-// html-to-text v9 ships no type declarations and there is no
-// @types/html-to-text package; suppress the implicit-any import error.
-// @ts-expect-error -- no bundled types for html-to-text
 import { convert } from "html-to-text";
 import TurndownService from "turndown";
 import type { BodyFormat } from "./types.js";
