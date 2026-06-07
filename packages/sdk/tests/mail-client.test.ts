@@ -103,3 +103,74 @@ describe("MailClient.sync", () => {
     expect(path).toContain("deltaToken=abc");
   });
 });
+
+describe("MailClient.list body modes", () => {
+  const sample = {
+    value: [
+      {
+        id: "1",
+        subject: "Hi",
+        bodyPreview: "snippet",
+        body: { contentType: "HTML", content: "<p>Hello <strong>world</strong></p>" },
+      },
+    ],
+  };
+
+  it("preview (default) drops body, keeps bodyPreview, selects bodyPreview not body", async () => {
+    const gc = makeGraphClient({ list: mock(() => Promise.resolve(structuredClone(sample))) });
+    const client = new MailClient(gc);
+    const res = await client.list();
+    const [, opts] = (gc.list as ReturnType<typeof mock>).mock.calls[0] as [string, { $select?: string }];
+    expect(opts.$select).toContain("bodyPreview");
+    expect(opts.$select).not.toContain(",body");
+    expect(res.value[0]!.body).toBeUndefined();
+    expect(res.value[0]!.bodyPreview).toBe("snippet");
+  });
+
+  it("none drops both body and bodyPreview", async () => {
+    const gc = makeGraphClient({ list: mock(() => Promise.resolve(structuredClone(sample))) });
+    const client = new MailClient(gc);
+    const res = await client.list({ body: "none" });
+    expect(res.value[0]!.body).toBeUndefined();
+    expect(res.value[0]!.bodyPreview).toBeUndefined();
+  });
+
+  it("full converts each body to the requested format", async () => {
+    const gc = makeGraphClient({ list: mock(() => Promise.resolve(structuredClone(sample))) });
+    const client = new MailClient(gc);
+    const res = await client.list({ body: "full", bodyFormat: "markdown" });
+    const [, opts] = (gc.list as ReturnType<typeof mock>).mock.calls[0] as [string, { $select?: string }];
+    expect(opts.$select).toContain("body");
+    expect(res.value[0]!.body!.contentType).toBe("markdown");
+    expect(res.value[0]!.body!.content).toContain("**world**");
+  });
+
+  it("respects an explicit select verbatim", async () => {
+    const gc = makeGraphClient({ list: mock(() => Promise.resolve({ value: [] })) });
+    const client = new MailClient(gc);
+    await client.list({ select: "id,subject" });
+    const [, opts] = (gc.list as ReturnType<typeof mock>).mock.calls[0] as [string, { $select?: string }];
+    expect(opts.$select).toBe("id,subject");
+  });
+});
+
+describe("MailClient.get body conversion", () => {
+  it("converts the body to the requested format", async () => {
+    const msg = { id: "1", body: { contentType: "HTML", content: "<p>Hi <em>there</em></p>" } };
+    const gc = makeGraphClient({ get: mock(() => Promise.resolve(structuredClone(msg))) });
+    const client = new MailClient(gc);
+    const res = await client.get("1", { bodyFormat: "markdown" });
+    expect(res.body!.contentType).toBe("markdown");
+    expect(res.body!.content).toContain("_there_");
+  });
+
+  it("defaults to text and strips HTML", async () => {
+    const msg = { id: "1", body: { contentType: "HTML", content: "<p>Hi there</p>" } };
+    const gc = makeGraphClient({ get: mock(() => Promise.resolve(structuredClone(msg))) });
+    const client = new MailClient(gc);
+    const res = await client.get("1");
+    expect(res.body!.contentType).toBe("text");
+    expect(res.body!.content).toContain("Hi there");
+    expect(res.body!.content).not.toContain("<p>");
+  });
+});
