@@ -1,5 +1,15 @@
 import { z } from "zod";
 
+// Output + body format enums
+export const BodyFormatSchema = z.enum(["text", "markdown", "html"]);
+export type BodyFormat = z.infer<typeof BodyFormatSchema>;
+
+export const ListBodyModeSchema = z.enum(["none", "preview", "full"]);
+export type ListBodyMode = z.infer<typeof ListBodyModeSchema>;
+
+export const OutputFormatSchema = z.enum(["toon", "json"]);
+export type OutputFormat = z.infer<typeof OutputFormatSchema>;
+
 // Config
 export const OutlookConfigSchema = z.object({
   clientId: z.string().min(1, "OUTLOOK_CLIENT_ID is required"),
@@ -28,7 +38,7 @@ export type AuthStatus = z.infer<typeof AuthStatusSchema>;
 
 // Graph API — message types
 export const MessageBodySchema = z.object({
-  contentType: z.enum(["text", "HTML"]),
+  contentType: z.string(),
   content: z.string(),
 });
 export type MessageBody = z.infer<typeof MessageBodySchema>;
@@ -82,8 +92,15 @@ export const ListMailParamsSchema = z.object({
   filter: z.string().optional(),
   select: z.string().optional(),
   orderby: z.string().optional(),
+  body: ListBodyModeSchema.default("preview"),
+  bodyFormat: BodyFormatSchema.default("text"),
 });
 export type ListMailParams = z.infer<typeof ListMailParamsSchema>;
+
+export const GetMailParamsSchema = z.object({
+  bodyFormat: BodyFormatSchema.default("text"),
+});
+export type GetMailParams = z.infer<typeof GetMailParamsSchema>;
 
 export const SendMailParamsSchema = z.object({
   to: z.string().email(),
