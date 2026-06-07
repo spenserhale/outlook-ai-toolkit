@@ -9,6 +9,9 @@ import {
   OutlookAuthError,
   OutlookConfigError,
   renderOutput,
+  BodyFormatSchema,
+  ListBodyModeSchema,
+  OutputFormatSchema,
 } from "@outlook-toolkit/sdk";
 
 async function getMailClient(): Promise<MailClient> {
@@ -50,9 +53,9 @@ export function registerMailTools(server: FastMCP) {
       filter: z.string().optional().describe("OData $filter expression"),
       select: z.string().optional().describe("Comma-separated fields to return (overrides body shaping)"),
       orderby: z.string().optional().describe("OData orderby expression (e.g. \"receivedDateTime desc\")"),
-      body: z.enum(["none", "preview", "full"]).default("preview").describe("How much body each row carries"),
-      bodyFormat: z.enum(["text", "markdown", "html"]).default("text").describe("Body format when body=full"),
-      format: z.enum(["toon", "json"]).default("toon").describe("Output encoding (toon is cheaper for LLMs)"),
+      body: ListBodyModeSchema.default("preview").describe("How much body each row carries"),
+      bodyFormat: BodyFormatSchema.default("text").describe("Body format when body=full"),
+      format: OutputFormatSchema.default("toon").describe("Output encoding (toon is cheaper for LLMs)"),
     }),
     execute: async (args) => {
       const mail = await getMailClient();
@@ -75,8 +78,8 @@ export function registerMailTools(server: FastMCP) {
     description: "Get a single Outlook message by ID, including the full body (converted to text by default).",
     parameters: z.object({
       id: z.string().describe("Message ID"),
-      bodyFormat: z.enum(["text", "markdown", "html"]).default("text").describe("Body format: text (default), markdown, or raw html"),
-      format: z.enum(["toon", "json"]).default("toon").describe("Output encoding (toon is cheaper for LLMs)"),
+      bodyFormat: BodyFormatSchema.default("text").describe("Body format: text (default), markdown, or raw html"),
+      format: OutputFormatSchema.default("toon").describe("Output encoding (toon is cheaper for LLMs)"),
     }),
     execute: async (args) => {
       const mail = await getMailClient();
@@ -138,7 +141,7 @@ export function registerMailTools(server: FastMCP) {
       "Delta sync inbox — returns only messages that changed since the last sync. On first call, omit deltaLink to get the full initial sync. Save the returned deltaLink and pass it on subsequent calls to get only changes.",
     parameters: z.object({
       deltaLink: z.string().optional().describe("Delta link from a previous sync call. Omit for initial full sync."),
-      format: z.enum(["toon", "json"]).default("toon").describe("Output encoding (toon is cheaper for LLMs)"),
+      format: OutputFormatSchema.default("toon").describe("Output encoding (toon is cheaper for LLMs)"),
     }),
     execute: async (args) => {
       const mail = await getMailClient();
