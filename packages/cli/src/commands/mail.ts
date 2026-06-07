@@ -12,7 +12,7 @@ import { resolveCliConfig } from "../context.js";
 
 function parseBodyFormat(s: string): BodyFormat {
   if (s === "text" || s === "markdown" || s === "html") return s;
-  throw new Error(`--body-format must be one of: text, markdown, html (got: "${s}")`);
+  throw new Error(`--bodyFormat must be one of: text, markdown, html (got: "${s}")`);
 }
 
 function parseListBody(s: string): ListBodyMode {
