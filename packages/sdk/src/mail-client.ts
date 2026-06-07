@@ -19,7 +19,7 @@ const SUMMARY_FIELDS =
 
 function defaultSelect(mode: ListBodyMode): string {
   if (mode === "full") return `${SUMMARY_FIELDS},body`;
-  if (mode === "preview") return `bodyPreview,${SUMMARY_FIELDS}`;
+  if (mode === "preview") return `${SUMMARY_FIELDS},bodyPreview`;
   return SUMMARY_FIELDS;
 }
 
@@ -55,6 +55,8 @@ export class MailClient {
 
     if (params.cursor) {
       const result = (await this.graph.list<Message>(params.cursor, {})) as MailListResponse;
+      // The $skipToken URL already encodes the original $select; body mode here governs
+      // post-processing, so callers should thread the same body/bodyFormat through pagination.
       return applyListBody(result, mode, fmt);
     }
 
@@ -69,6 +71,8 @@ export class MailClient {
       `/me/mailFolders/${encodeURIComponent(folder)}/messages`,
       opts
     )) as MailListResponse;
+    // Explicit select is an advanced escape hatch: return exactly those fields, unshaped.
+    if (params.select) return result;
     return applyListBody(result, mode, fmt);
   }
 

@@ -121,8 +121,9 @@ describe("MailClient.list body modes", () => {
     const client = new MailClient(gc);
     const res = await client.list();
     const [, opts] = (gc.list as ReturnType<typeof mock>).mock.calls[0] as [string, { $select?: string }];
-    expect(opts.$select).toContain("bodyPreview");
-    expect(opts.$select).not.toContain(",body");
+    const fields = (opts.$select ?? "").split(",");
+    expect(fields).toContain("bodyPreview");
+    expect(fields).not.toContain("body");
     expect(res.value[0]!.body).toBeUndefined();
     expect(res.value[0]!.bodyPreview).toBe("snippet");
   });
@@ -140,7 +141,7 @@ describe("MailClient.list body modes", () => {
     const client = new MailClient(gc);
     const res = await client.list({ body: "full", bodyFormat: "markdown" });
     const [, opts] = (gc.list as ReturnType<typeof mock>).mock.calls[0] as [string, { $select?: string }];
-    expect(opts.$select).toContain("body");
+    expect((opts.$select ?? "").split(",")).toContain("body");
     expect(res.value[0]!.body!.contentType).toBe("markdown");
     expect(res.value[0]!.body!.content).toContain("**world**");
   });
