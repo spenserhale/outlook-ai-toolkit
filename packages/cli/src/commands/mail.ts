@@ -5,19 +5,23 @@ import {
   GraphClient,
   MailClient,
   renderOutput,
+  BodyFormatSchema,
+  ListBodyModeSchema,
   type BodyFormat,
   type ListBodyMode,
 } from "@outlook-toolkit/sdk";
 import { resolveCliConfig } from "../context.js";
 
 function parseBodyFormat(s: string): BodyFormat {
-  if (s === "text" || s === "markdown" || s === "html") return s;
-  throw new Error(`--bodyFormat must be one of: text, markdown, html (got: "${s}")`);
+  const r = BodyFormatSchema.safeParse(s);
+  if (r.success) return r.data;
+  throw new Error(`--bodyFormat must be one of: ${BodyFormatSchema.options.join(", ")} (got: "${s}")`);
 }
 
 function parseListBody(s: string): ListBodyMode {
-  if (s === "none" || s === "preview" || s === "full") return s;
-  throw new Error(`--body must be one of: none, preview, full (got: "${s}")`);
+  const r = ListBodyModeSchema.safeParse(s);
+  if (r.success) return r.data;
+  throw new Error(`--body must be one of: ${ListBodyModeSchema.options.join(", ")} (got: "${s}")`);
 }
 
 async function getMailClient(profile?: string): Promise<MailClient> {
