@@ -121,6 +121,11 @@ export function registerRulesTools(server: FastMCP) {
     execute: async (args) => {
       const rules = await getRulesClient();
       const { id, format, ...patch } = args;
+      if (Object.keys(patch).length === 0) {
+        throw new Error(
+          "nothing to update: provide at least one of displayName, sequence, isEnabled, conditions, actions"
+        );
+      }
       await rules.update(id, patch);
       return renderOutput({ status: "updated", ruleId: id }, format);
     },

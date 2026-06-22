@@ -32,7 +32,7 @@ function parseListBody(s: string): ListBodyMode {
   throw new Error(`--body must be one of: ${ListBodyModeSchema.options.join(", ")} (got: "${s}")`);
 }
 
-async function getMailClient(profile?: string): Promise<MailClient> {
+async function getGraphClient(profile?: string): Promise<GraphClient> {
   const config = await resolveCliConfig(profile);
   const store = new TokenStore(config.clientId);
   const auth = new OutlookAuth(config, store);
@@ -43,21 +43,15 @@ async function getMailClient(profile?: string): Promise<MailClient> {
     console.error("error: not authenticated (exit code 5). Run: outlook auth login");
     process.exit(5);
   }
-  return new MailClient(new GraphClient(token));
+  return new GraphClient(token);
+}
+
+async function getMailClient(profile?: string): Promise<MailClient> {
+  return new MailClient(await getGraphClient(profile));
 }
 
 async function getRulesClient(profile?: string): Promise<RulesClient> {
-  const config = await resolveCliConfig(profile);
-  const store = new TokenStore(config.clientId);
-  const auth = new OutlookAuth(config, store);
-  let token: string;
-  try {
-    token = await auth.acquireToken();
-  } catch {
-    console.error("error: not authenticated (exit code 5). Run: outlook auth login");
-    process.exit(5);
-  }
-  return new RulesClient(new GraphClient(token));
+  return new RulesClient(await getGraphClient(profile));
 }
 
 function csvToList(s: string | undefined): string[] | undefined {
