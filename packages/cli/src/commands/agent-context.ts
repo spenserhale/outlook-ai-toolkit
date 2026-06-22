@@ -19,7 +19,7 @@ const AGENT_CONTEXT = {
       status: { brief: "Show auth status", flags: { "--profile": "string (optional)", "--json": "boolean" } },
     },
     profile: {
-      save: { brief: "Save a named profile", args: ["name"], flags: { "--client-id": "string", "--tenant-id": "string" } },
+      save: { brief: "Save a named profile", args: ["name"], flags: { "--clientId": "string", "--tenantId": "string" } },
       list: { brief: "List profiles", flags: { "--json": "boolean" } },
       delete: { brief: "Delete a profile", args: ["name"], flags: { "--force": "boolean" } },
     },
@@ -30,6 +30,15 @@ const AGENT_CONTEXT = {
       reply: { brief: "Reply to a message", args: ["id"], flags: { "--body": "string (HTML)", "--dryRun": "boolean", "--json": "boolean", "--profile": "string (optional)" } },
       draft: { brief: "Create a draft email", flags: { "--to": "string (email)", "--subject": "string", "--body": "string (HTML)", "--dryRun": "boolean", "--json": "boolean", "--profile": "string (optional)" } },
       sync: { brief: "Delta sync inbox", flags: { "--deltaLink": "string (optional)", "--json": "boolean", "--profile": "string (optional)" } },
+      rules: {
+        list: { brief: "List inbox rules", flags: { "--json": "boolean", "--profile": "string (optional)" } },
+        get: { brief: "Get an inbox rule by ID", args: ["id"], flags: { "--json": "boolean", "--profile": "string (optional)" } },
+        create: { brief: "Create an inbox rule (from X -> move/delete)", flags: { "--name": "string", "--fromContains": "string (comma-separated)", "--subjectContains": "string (comma-separated)", "--moveTo": "string (folder id)", "--delete": "boolean", "--markRead": "boolean", "--stopProcessing": "boolean", "--sequence": "number (default: 1)", "--disabled": "boolean", "--conditions": "json (overrides flags)", "--actions": "json (overrides flags)", "--dryRun": "boolean", "--json": "boolean", "--profile": "string (optional)" } },
+        update: { brief: "Update an inbox rule", args: ["id"], flags: { "--name": "string", "--sequence": "number", "--enable": "boolean", "--disable": "boolean", "--conditions": "json", "--actions": "json", "--json": "boolean", "--profile": "string (optional)" } },
+        delete: { brief: "Delete an inbox rule by ID", args: ["id"], flags: { "--dryRun": "boolean", "--json": "boolean", "--profile": "string (optional)" } },
+      },
+      "mass-archive": { brief: "Move existing inbox mail matching conditions to Archive", flags: { "--from": "string", "--subjectContains": "string", "--bodyContains": "string", "--olderThanDays": "number", "--conditions": "json array (overrides single-condition flags)", "--to": "string (default: archive)", "--folder": "string (default: inbox)", "--max": "number (default: 200)", "--dryRun": "boolean", "--json": "boolean", "--profile": "string (optional)" } },
+      "mass-delete": { brief: "Move existing inbox mail matching conditions to Deleted Items", flags: { "--from": "string", "--subjectContains": "string", "--bodyContains": "string", "--olderThanDays": "number", "--conditions": "json array (overrides single-condition flags)", "--to": "string (default: deleteditems)", "--folder": "string (default: inbox)", "--max": "number (default: 200)", "--dryRun": "boolean", "--json": "boolean", "--profile": "string (optional)" } },
     },
   },
   exit_codes: {
