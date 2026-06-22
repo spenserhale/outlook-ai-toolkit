@@ -22,6 +22,15 @@ export type {
   BodyFormat,
   ListBodyMode,
   OutputFormat,
+  MessageRule,
+  MessageRulePredicates,
+  MessageRuleActions,
+  MessageRuleListResponse,
+  CreateMessageRuleParams,
+  UpdateMessageRuleParams,
+  SweepCondition,
+  MassMoveParams,
+  MassMoveResult,
 } from "./types.js";
 export {
   OutlookConfigSchema,
@@ -40,6 +49,16 @@ export {
   BodyFormatSchema,
   ListBodyModeSchema,
   OutputFormatSchema,
+  MessageRuleSchema,
+  MessageRulePredicatesSchema,
+  MessageRuleActionsSchema,
+  MessageRuleListResponseSchema,
+  CreateMessageRuleParamsSchema,
+  UpdateMessageRuleParamsSchema,
+  SweepConditionSchema,
+  SweepConditionsSchema,
+  MassMoveParamsSchema,
+  MassMoveResultSchema,
 } from "./types.js";
 
 // Errors
@@ -68,6 +87,9 @@ export { ProfileStore } from "./profile-store.js";
 export { GraphClient } from "./graph-client.js";
 export type { ODataOptions, ODataListResponse } from "./graph-client.js";
 export { MailClient } from "./mail-client.js";
+export type { MoveBatchResult } from "./mail-client.js";
+export { RulesClient } from "./rules-client.js";
+export { buildSearchQuery, isoDaysAgo, isOlderThan } from "./sweep-query.js";
 
 // Output + body rendering
 export { renderBody } from "./body.js";
