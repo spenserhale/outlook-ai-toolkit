@@ -4,11 +4,16 @@ import {
   TokenStore,
   GraphClient,
   MailClient,
+  RulesClient,
   renderOutput,
   BodyFormatSchema,
   ListBodyModeSchema,
   type BodyFormat,
   type ListBodyMode,
+  type CreateMessageRuleParams,
+  type UpdateMessageRuleParams,
+  type MessageRulePredicates,
+  type MessageRuleActions,
 } from "@outlook-toolkit/sdk";
 import { resolveCliConfig } from "../context.js";
 
@@ -36,6 +41,26 @@ async function getMailClient(profile?: string): Promise<MailClient> {
     process.exit(5);
   }
   return new MailClient(new GraphClient(token));
+}
+
+async function getRulesClient(profile?: string): Promise<RulesClient> {
+  const config = await resolveCliConfig(profile);
+  const store = new TokenStore(config.clientId);
+  const auth = new OutlookAuth(config, store);
+  let token: string;
+  try {
+    token = await auth.acquireToken();
+  } catch {
+    console.error("error: not authenticated (exit code 5). Run: outlook auth login");
+    process.exit(5);
+  }
+  return new RulesClient(new GraphClient(token));
+}
+
+function csvToList(s: string | undefined): string[] | undefined {
+  if (!s) return undefined;
+  const items = s.split(",").map((x) => x.trim()).filter(Boolean);
+  return items.length ? items : undefined;
 }
 
 const listCommand = buildCommand({
@@ -212,7 +237,194 @@ const syncCommand = buildCommand({
   },
 });
 
+const rulesListCommand = buildCommand({
+  docs: { brief: "List inbox rules (messageRules)" },
+  parameters: {
+    flags: {
+      profile: { kind: "parsed", brief: "Profile name", parse: String, optional: true },
+      json: { kind: "boolean", brief: "Output as JSON", default: false },
+    },
+  },
+  async func(this: void, flags: { profile?: string; json: boolean }) {
+    const rules = await getRulesClient(flags.profile);
+    const result = await rules.list();
+    console.log(renderOutput(result, flags.json ? "json" : "toon"));
+  },
+});
+
+const rulesGetCommand = buildCommand({
+  docs: { brief: "Get an inbox rule by ID" },
+  parameters: {
+    flags: {
+      profile: { kind: "parsed", brief: "Profile name", parse: String, optional: true },
+      json: { kind: "boolean", brief: "Output as JSON", default: false },
+    },
+    positional: { kind: "tuple", parameters: [{ brief: "Rule ID", parse: String }] },
+  },
+  async func(this: void, flags: { profile?: string; json: boolean }, id: string) {
+    const rules = await getRulesClient(flags.profile);
+    const rule = await rules.get(id);
+    console.log(renderOutput(rule, flags.json ? "json" : "toon"));
+  },
+});
+
+const rulesCreateCommand = buildCommand({
+  docs: { brief: "Create an inbox rule (e.g. from X -> move to Deleted Items)" },
+  parameters: {
+    flags: {
+      profile: { kind: "parsed", brief: "Profile name", parse: String, optional: true },
+      name: { kind: "parsed", brief: "Rule display name", parse: String },
+      fromContains: { kind: "parsed", brief: "Sender contains (comma-separated)", parse: String, optional: true },
+      subjectContains: { kind: "parsed", brief: "Subject contains (comma-separated)", parse: String, optional: true },
+      moveTo: { kind: "parsed", brief: "Destination folder id/well-known name", parse: String, optional: true },
+      delete: { kind: "boolean", brief: "Action: move to Deleted Items", default: false },
+      markRead: { kind: "boolean", brief: "Action: mark as read", default: false },
+      stopProcessing: { kind: "boolean", brief: "Action: stop processing further rules", default: false },
+      sequence: { kind: "parsed", brief: "Rule order (default: 1)", parse: Number, optional: true },
+      disabled: { kind: "boolean", brief: "Create the rule disabled", default: false },
+      conditions: { kind: "parsed", brief: "Raw conditions JSON (overrides convenience flags)", parse: String, optional: true },
+      actions: { kind: "parsed", brief: "Raw actions JSON (overrides convenience flags)", parse: String, optional: true },
+      dryRun: { kind: "boolean", brief: "Validate without creating", default: false },
+      json: { kind: "boolean", brief: "Output as JSON", default: false },
+    },
+  },
+  async func(
+    this: void,
+    flags: {
+      profile?: string; name: string;
+      fromContains?: string; subjectContains?: string;
+      moveTo?: string; delete: boolean; markRead: boolean; stopProcessing: boolean;
+      sequence?: number; disabled: boolean;
+      conditions?: string; actions?: string;
+      dryRun: boolean; json: boolean;
+    }
+  ) {
+    let conditions: MessageRulePredicates | undefined;
+    let actions: MessageRuleActions;
+    try {
+      conditions = flags.conditions
+        ? (JSON.parse(flags.conditions) as MessageRulePredicates)
+        : {
+            ...(csvToList(flags.fromContains) && { senderContains: csvToList(flags.fromContains) }),
+            ...(csvToList(flags.subjectContains) && { subjectContains: csvToList(flags.subjectContains) }),
+          };
+      if (conditions && Object.keys(conditions).length === 0) conditions = undefined;
+
+      actions = flags.actions
+        ? (JSON.parse(flags.actions) as MessageRuleActions)
+        : {
+            ...(flags.moveTo && { moveToFolder: flags.moveTo }),
+            ...(flags.delete && { delete: true }),
+            ...(flags.markRead && { markAsRead: true }),
+            ...(flags.stopProcessing && { stopProcessingRules: true }),
+          };
+    } catch (err) {
+      console.error(`error: invalid JSON for --conditions/--actions (exit code 2): ${(err as Error).message}`);
+      process.exit(2);
+    }
+
+    if (!actions || Object.keys(actions).length === 0) {
+      console.error("error: a rule needs at least one action (--moveTo, --delete, --markRead, or --actions) (exit code 2)");
+      process.exit(2);
+    }
+
+    const params: CreateMessageRuleParams = {
+      displayName: flags.name,
+      sequence: flags.sequence ?? 1,
+      isEnabled: !flags.disabled,
+      ...(conditions && { conditions }),
+      actions,
+    };
+
+    if (flags.dryRun) {
+      console.log(renderOutput({ status: "dry_run", rule: params }, flags.json ? "json" : "toon"));
+      return;
+    }
+
+    const rules = await getRulesClient(flags.profile);
+    const created = await rules.create(params);
+    console.log(renderOutput(created, flags.json ? "json" : "toon"));
+  },
+});
+
+const rulesUpdateCommand = buildCommand({
+  docs: { brief: "Update an inbox rule (enable/disable, reorder, replace conditions/actions)" },
+  parameters: {
+    flags: {
+      profile: { kind: "parsed", brief: "Profile name", parse: String, optional: true },
+      name: { kind: "parsed", brief: "New display name", parse: String, optional: true },
+      sequence: { kind: "parsed", brief: "New order", parse: Number, optional: true },
+      enable: { kind: "boolean", brief: "Enable the rule", default: false },
+      disable: { kind: "boolean", brief: "Disable the rule", default: false },
+      conditions: { kind: "parsed", brief: "Raw conditions JSON", parse: String, optional: true },
+      actions: { kind: "parsed", brief: "Raw actions JSON", parse: String, optional: true },
+      json: { kind: "boolean", brief: "Output as JSON", default: false },
+    },
+    positional: { kind: "tuple", parameters: [{ brief: "Rule ID", parse: String }] },
+  },
+  async func(
+    this: void,
+    flags: {
+      profile?: string; name?: string; sequence?: number;
+      enable: boolean; disable: boolean; conditions?: string; actions?: string; json: boolean;
+    },
+    id: string
+  ) {
+    const patch: UpdateMessageRuleParams = {};
+    try {
+      if (flags.name !== undefined) patch.displayName = flags.name;
+      if (flags.sequence !== undefined) patch.sequence = flags.sequence;
+      if (flags.enable) patch.isEnabled = true;
+      if (flags.disable) patch.isEnabled = false;
+      if (flags.conditions) patch.conditions = JSON.parse(flags.conditions) as MessageRulePredicates;
+      if (flags.actions) patch.actions = JSON.parse(flags.actions) as MessageRuleActions;
+    } catch (err) {
+      console.error(`error: invalid JSON for --conditions/--actions (exit code 2): ${(err as Error).message}`);
+      process.exit(2);
+    }
+    if (Object.keys(patch).length === 0) {
+      console.error("error: nothing to update (exit code 2)");
+      process.exit(2);
+    }
+    const rules = await getRulesClient(flags.profile);
+    await rules.update(id, patch);
+    console.log(renderOutput({ status: "updated", ruleId: id }, flags.json ? "json" : "toon"));
+  },
+});
+
+const rulesDeleteCommand = buildCommand({
+  docs: { brief: "Delete an inbox rule by ID" },
+  parameters: {
+    flags: {
+      profile: { kind: "parsed", brief: "Profile name", parse: String, optional: true },
+      dryRun: { kind: "boolean", brief: "Validate without deleting", default: false },
+      json: { kind: "boolean", brief: "Output as JSON", default: false },
+    },
+    positional: { kind: "tuple", parameters: [{ brief: "Rule ID", parse: String }] },
+  },
+  async func(this: void, flags: { profile?: string; dryRun: boolean; json: boolean }, id: string) {
+    if (flags.dryRun) {
+      console.log(renderOutput({ status: "dry_run", ruleId: id }, flags.json ? "json" : "toon"));
+      return;
+    }
+    const rules = await getRulesClient(flags.profile);
+    await rules.delete(id);
+    console.log(renderOutput({ status: "deleted", ruleId: id }, flags.json ? "json" : "toon"));
+  },
+});
+
+const rulesRoutes = buildRouteMap({
+  routes: {
+    list: rulesListCommand,
+    get: rulesGetCommand,
+    create: rulesCreateCommand,
+    update: rulesUpdateCommand,
+    delete: rulesDeleteCommand,
+  },
+  docs: { brief: "Manage inbox rules (messageRules)" },
+});
+
 export const mailRoutes = buildRouteMap({
-  routes: { list: listCommand, get: getCommand, send: sendCommand, reply: replyCommand, draft: draftCommand, sync: syncCommand },
+  routes: { list: listCommand, get: getCommand, send: sendCommand, reply: replyCommand, draft: draftCommand, sync: syncCommand, rules: rulesRoutes },
   docs: { brief: "Read and send Outlook mail" },
 });
