@@ -124,6 +124,70 @@ export const DraftParamsSchema = z.object({
 });
 export type DraftParams = z.infer<typeof DraftParamsSchema>;
 
+// Graph API — messageRules (inbox rules)
+export const MessageRulePredicatesSchema = z
+  .object({
+    senderContains: z.array(z.string()).optional(),
+    subjectContains: z.array(z.string()).optional(),
+    bodyContains: z.array(z.string()).optional(),
+    fromAddresses: z.array(RecipientSchema).optional(),
+  })
+  .passthrough();
+export type MessageRulePredicates = z.infer<typeof MessageRulePredicatesSchema>;
+
+export const MessageRuleActionsSchema = z
+  .object({
+    moveToFolder: z.string().optional(),
+    delete: z.boolean().optional(),
+    markAsRead: z.boolean().optional(),
+    forwardTo: z.array(RecipientSchema).optional(),
+    stopProcessingRules: z.boolean().optional(),
+  })
+  .passthrough();
+export type MessageRuleActions = z.infer<typeof MessageRuleActionsSchema>;
+
+export const MessageRuleSchema = z
+  .object({
+    id: z.string(),
+    displayName: z.string().optional(),
+    sequence: z.number().optional(),
+    isEnabled: z.boolean().optional(),
+    isReadOnly: z.boolean().optional(),
+    hasError: z.boolean().optional(),
+    conditions: MessageRulePredicatesSchema.optional(),
+    actions: MessageRuleActionsSchema.optional(),
+    exceptions: MessageRulePredicatesSchema.optional(),
+  })
+  .passthrough();
+export type MessageRule = z.infer<typeof MessageRuleSchema>;
+
+export const MessageRuleListResponseSchema = z.object({
+  value: z.array(MessageRuleSchema),
+});
+export type MessageRuleListResponse = z.infer<typeof MessageRuleListResponseSchema>;
+
+export const CreateMessageRuleParamsSchema = z.object({
+  displayName: z.string().min(1),
+  sequence: z.number().int().default(1),
+  isEnabled: z.boolean().default(true),
+  conditions: MessageRulePredicatesSchema.optional(),
+  actions: MessageRuleActionsSchema,
+  exceptions: MessageRulePredicatesSchema.optional(),
+});
+export type CreateMessageRuleParams = z.infer<typeof CreateMessageRuleParamsSchema>;
+
+export const UpdateMessageRuleParamsSchema = z
+  .object({
+    displayName: z.string(),
+    sequence: z.number().int(),
+    isEnabled: z.boolean(),
+    conditions: MessageRulePredicatesSchema,
+    actions: MessageRuleActionsSchema,
+    exceptions: MessageRulePredicatesSchema,
+  })
+  .partial();
+export type UpdateMessageRuleParams = z.infer<typeof UpdateMessageRuleParamsSchema>;
+
 // Profile storage
 export const ProfileSchema = z.object({
   clientId: z.string().min(1),
