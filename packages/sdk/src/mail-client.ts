@@ -14,6 +14,11 @@ import type {
 import { GRAPH_BASE_URL } from "./config.js";
 import { renderBody } from "./body.js";
 
+export interface MoveBatchResult {
+  moved: number;
+  failed: Array<{ id: string; status: number }>;
+}
+
 const SUMMARY_FIELDS =
   "id,subject,from,toRecipients,receivedDateTime,sentDateTime,isRead,isDraft,conversationId";
 
@@ -120,5 +125,35 @@ export class MailClient {
       : "/me/mailFolders/inbox/messages/delta";
     const result = await this.graph.list<Message>(path);
     return result as DeltaResponse;
+  }
+
+  async move(id: string, destinationId: string): Promise<void> {
+    await this.graph.post(`/me/messages/${encodeURIComponent(id)}/move`, {
+      destinationId,
+    });
+  }
+
+  async moveBatch(ids: string[], destinationId: string): Promise<MoveBatchResult> {
+    const result: MoveBatchResult = { moved: 0, failed: [] };
+    for (let i = 0; i < ids.length; i += 20) {
+      const chunk = ids.slice(i, i + 20);
+      const requests = chunk.map((id, j) => ({
+        id: String(j),
+        method: "POST",
+        url: `/me/messages/${encodeURIComponent(id)}/move`,
+        headers: { "Content-Type": "application/json" },
+        body: { destinationId },
+      }));
+      const res = await this.graph.post<
+        { requests: typeof requests },
+        { responses: Array<{ id: string; status: number }> }
+      >("/$batch", { requests });
+      for (const r of res.responses) {
+        const originalId = chunk[Number(r.id)]!;
+        if (r.status >= 200 && r.status < 300) result.moved++;
+        else result.failed.push({ id: originalId, status: r.status });
+      }
+    }
+    return result;
   }
 }

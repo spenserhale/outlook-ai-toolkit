@@ -190,3 +190,47 @@ describe("MailClient.get body conversion", () => {
     expect(res.body!.content).not.toContain("<p>");
   });
 });
+
+describe("MailClient.move / moveBatch", () => {
+  it("move posts destinationId to the encoded message move endpoint", async () => {
+    const post = mock(() => Promise.resolve(undefined));
+    const mail = new MailClient(makeGraphClient({ post }));
+    await mail.move("a/b", "archive");
+    const [path, body] = post.mock.calls[0] as [string, Record<string, unknown>];
+    expect(path).toBe("/me/messages/a%2Fb/move");
+    expect(body).toEqual({ destinationId: "archive" });
+  });
+
+  it("moveBatch chunks into groups of 20 and tallies statuses", async () => {
+    const ids = Array.from({ length: 25 }, (_, i) => `id${i}`);
+    const post = mock((path: string, body: { requests: Array<{ id: string }> }) =>
+      Promise.resolve({
+        responses: body.requests.map((r) => ({ id: r.id, status: 200 })),
+      })
+    );
+    const mail = new MailClient(makeGraphClient({ post }));
+    const result = await mail.moveBatch(ids, "deleteditems");
+    expect(post.mock.calls).toHaveLength(2); // 20 + 5
+    expect(result.moved).toBe(25);
+    expect(result.failed).toEqual([]);
+    expect((post.mock.calls[0] as unknown[])[0]).toBe("/$batch");
+  });
+
+  it("moveBatch records failures by original id", async () => {
+    const post = mock(() =>
+      Promise.resolve({ responses: [{ id: "0", status: 404 }, { id: "1", status: 200 }] })
+    );
+    const mail = new MailClient(makeGraphClient({ post }));
+    const result = await mail.moveBatch(["x", "y"], "archive");
+    expect(result.moved).toBe(1);
+    expect(result.failed).toEqual([{ id: "x", status: 404 }]);
+  });
+
+  it("moveBatch returns early for an empty id list", async () => {
+    const post = mock(() => Promise.resolve({ responses: [] }));
+    const mail = new MailClient(makeGraphClient({ post }));
+    const result = await mail.moveBatch([], "archive");
+    expect(post.mock.calls).toHaveLength(0);
+    expect(result.moved).toBe(0);
+  });
+});
