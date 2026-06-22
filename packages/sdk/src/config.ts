@@ -11,6 +11,7 @@ export const SCOPES = [
   "Mail.Read",
   "Mail.ReadWrite",
   "Mail.Send",
+  "MailboxSettings.ReadWrite",
   "offline_access",
   "openid",
   "profile",

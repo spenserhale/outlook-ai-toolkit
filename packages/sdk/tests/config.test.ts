@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach, afterEach } from "bun:test";
-import { resolveConfig, resolveAuthority } from "../src/config.js";
+import { resolveConfig, resolveAuthority, SCOPES } from "../src/config.js";
 import { OutlookConfigError } from "../src/errors.js";
 
 describe("resolveAuthority", () => {
@@ -20,6 +20,12 @@ describe("resolveAuthority", () => {
     expect(resolveAuthority(guid)).toBe(
       `https://login.microsoftonline.com/${guid}`
     );
+  });
+});
+
+describe("SCOPES", () => {
+  it("includes MailboxSettings.ReadWrite for messageRules", () => {
+    expect(SCOPES).toContain("MailboxSettings.ReadWrite");
   });
 });
 
