@@ -11,6 +11,8 @@ import type {
   ReplyParams,
   DraftParams,
   SweepCondition,
+  MassMoveParams,
+  MassMoveResult,
 } from "./types.js";
 import { GRAPH_BASE_URL } from "./config.js";
 import { renderBody } from "./body.js";
@@ -205,5 +207,44 @@ export class MailClient {
     }
 
     return [...seen.values()].slice(0, max);
+  }
+
+  async massMove(params: MassMoveParams): Promise<MassMoveResult> {
+    const folder = params.folder ?? "inbox";
+    const max = params.max ?? 200;
+    const matches = await this.findMatches(params.conditions, folder, max);
+    const messages = matches.map((m) => ({
+      id: m.id,
+      subject: m.subject ?? null,
+      from: m.from?.emailAddress?.address,
+      receivedDateTime: m.receivedDateTime,
+    }));
+    const capped = matches.length >= max;
+
+    if (params.dryRun) {
+      return {
+        destination: params.destination,
+        dryRun: true,
+        matched: matches.length,
+        moved: 0,
+        failed: [],
+        capped,
+        messages,
+      };
+    }
+
+    const { moved, failed } = await this.moveBatch(
+      matches.map((m) => m.id),
+      params.destination
+    );
+    return {
+      destination: params.destination,
+      dryRun: false,
+      matched: matches.length,
+      moved,
+      failed,
+      capped,
+      messages,
+    };
   }
 }

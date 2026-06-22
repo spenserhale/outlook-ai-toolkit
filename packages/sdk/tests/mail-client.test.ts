@@ -290,3 +290,64 @@ describe("MailClient.findMatches", () => {
     expect(matches).toHaveLength(2);
   });
 });
+
+describe("MailClient.massMove", () => {
+  it("dryRun returns matched summary and does not move", async () => {
+    const list = mock(() =>
+      Promise.resolve({
+        value: [{ id: "m1", subject: "Hi", from: { emailAddress: { address: "a@x.com" } } }],
+      })
+    );
+    const post = mock(() => Promise.resolve({ responses: [] }));
+    const mail = new MailClient(makeGraphClient({ list, post }));
+    const result = await mail.massMove({
+      conditions: [{ from: "a@x.com" }],
+      destination: "archive",
+      folder: "inbox",
+      max: 200,
+      dryRun: true,
+    });
+    expect(result.dryRun).toBe(true);
+    expect(result.matched).toBe(1);
+    expect(result.moved).toBe(0);
+    expect(post.mock.calls).toHaveLength(0);
+    expect(result.messages[0]).toEqual({
+      id: "m1",
+      subject: "Hi",
+      from: "a@x.com",
+      receivedDateTime: undefined,
+    });
+  });
+
+  it("moves matches and reports moved count", async () => {
+    const list = mock(() => Promise.resolve({ value: [{ id: "m1" }, { id: "m2" }] }));
+    const post = mock(() =>
+      Promise.resolve({ responses: [{ id: "0", status: 200 }, { id: "1", status: 200 }] })
+    );
+    const mail = new MailClient(makeGraphClient({ list, post }));
+    const result = await mail.massMove({
+      conditions: [{ from: "a@x.com" }],
+      destination: "deleteditems",
+      folder: "inbox",
+      max: 200,
+      dryRun: false,
+    });
+    expect(result.matched).toBe(2);
+    expect(result.moved).toBe(2);
+    expect(result.destination).toBe("deleteditems");
+    expect((post.mock.calls[0] as unknown[])[0]).toBe("/$batch");
+  });
+
+  it("flags capped when matches reach max", async () => {
+    const list = mock(() => Promise.resolve({ value: [{ id: "a" }, { id: "b" }] }));
+    const mail = new MailClient(makeGraphClient({ list }));
+    const result = await mail.massMove({
+      conditions: [{ from: "a@x.com" }],
+      destination: "archive",
+      folder: "inbox",
+      max: 2,
+      dryRun: true,
+    });
+    expect(result.capped).toBe(true);
+  });
+});
