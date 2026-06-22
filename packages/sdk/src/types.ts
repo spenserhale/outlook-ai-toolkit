@@ -188,6 +188,49 @@ export const UpdateMessageRuleParamsSchema = z
   .partial();
 export type UpdateMessageRuleParams = z.infer<typeof UpdateMessageRuleParamsSchema>;
 
+// Sweep / mass-move (retroactive bulk move of existing mail)
+export const SweepConditionSchema = z
+  .object({
+    from: z.string().optional(),
+    subjectContains: z.string().optional(),
+    bodyContains: z.string().optional(),
+    olderThanDays: z.number().int().positive().optional(),
+  })
+  .refine(
+    (c) => !!(c.from || c.subjectContains || c.bodyContains || c.olderThanDays),
+    { message: "each condition needs at least one of: from, subjectContains, bodyContains, olderThanDays" }
+  );
+export type SweepCondition = z.infer<typeof SweepConditionSchema>;
+
+export const SweepConditionsSchema = z.array(SweepConditionSchema).min(1);
+
+export const MassMoveParamsSchema = z.object({
+  conditions: SweepConditionsSchema,
+  destination: z.string().min(1),
+  folder: z.string().default("inbox"),
+  max: z.number().int().positive().max(1000).default(200),
+  dryRun: z.boolean().default(false),
+});
+export type MassMoveParams = z.infer<typeof MassMoveParamsSchema>;
+
+export const MassMoveResultSchema = z.object({
+  destination: z.string(),
+  dryRun: z.boolean(),
+  matched: z.number(),
+  moved: z.number(),
+  failed: z.array(z.object({ id: z.string(), status: z.number() })),
+  capped: z.boolean(),
+  messages: z.array(
+    z.object({
+      id: z.string(),
+      subject: z.string().nullable().optional(),
+      from: z.string().optional(),
+      receivedDateTime: z.string().optional(),
+    })
+  ),
+});
+export type MassMoveResult = z.infer<typeof MassMoveResultSchema>;
+
 // Profile storage
 export const ProfileSchema = z.object({
   clientId: z.string().min(1),
