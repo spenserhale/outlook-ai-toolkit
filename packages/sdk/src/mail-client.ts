@@ -1,4 +1,4 @@
-import type { GraphClient } from "./graph-client.js";
+import type { GraphClient, ODataOptions } from "./graph-client.js";
 import type {
   Message,
   MailListResponse,
@@ -10,9 +10,11 @@ import type {
   SendMailParams,
   ReplyParams,
   DraftParams,
+  SweepCondition,
 } from "./types.js";
 import { GRAPH_BASE_URL } from "./config.js";
 import { renderBody } from "./body.js";
+import { buildSearchQuery, isoDaysAgo, isOlderThan } from "./sweep-query.js";
 
 export interface MoveBatchResult {
   moved: number;
@@ -155,5 +157,53 @@ export class MailClient {
       }
     }
     return result;
+  }
+
+  async findMatches(
+    conditions: SweepCondition[],
+    folder: string,
+    max: number
+  ): Promise<Message[]> {
+    const seen = new Map<string, Message>();
+    const path = `/me/mailFolders/${encodeURIComponent(folder)}/messages`;
+
+    for (const c of conditions) {
+      if (seen.size >= max) break;
+      const query = buildSearchQuery(c);
+      const opts: ODataOptions = {
+        $select: "id,subject,from,receivedDateTime",
+        $top: Math.min(100, max),
+      };
+      if (query) {
+        opts.$search = `"${query}"`;
+      } else if (c.olderThanDays) {
+        opts.$filter = `receivedDateTime lt ${isoDaysAgo(c.olderThanDays)}`;
+      }
+
+      let cursor: string | undefined;
+      let guard = 0;
+      while (seen.size < max && guard < 50) {
+        guard++;
+        const page = cursor
+          ? ((await this.graph.list<Message>(
+              cursor.replace(GRAPH_BASE_URL, ""),
+              {}
+            )) as MailListResponse)
+          : ((await this.graph.list<Message>(path, opts)) as MailListResponse);
+
+        for (const m of page.value) {
+          // olderThanDays + search terms: search can't also date-filter, so filter here.
+          if (query && c.olderThanDays && !isOlderThan(m.receivedDateTime, c.olderThanDays)) {
+            continue;
+          }
+          if (!seen.has(m.id)) seen.set(m.id, m);
+          if (seen.size >= max) break;
+        }
+        cursor = page["@odata.nextLink"];
+        if (!cursor) break;
+      }
+    }
+
+    return [...seen.values()].slice(0, max);
   }
 }

@@ -234,3 +234,59 @@ describe("MailClient.move / moveBatch", () => {
     expect(result.moved).toBe(0);
   });
 });
+
+describe("MailClient.findMatches", () => {
+  it("uses $search for keyword conditions and dedupes by id across conditions", async () => {
+    const list = mock(() =>
+      Promise.resolve({ value: [{ id: "m1" }, { id: "m2" }] })
+    );
+    const mail = new MailClient(makeGraphClient({ list }));
+    const matches = await mail.findMatches(
+      [{ from: "alice@x.com" }, { from: "alice@x.com" }],
+      "inbox",
+      200
+    );
+    const [path, opts] = list.mock.calls[0] as [string, Record<string, unknown>];
+    expect(path).toBe("/me/mailFolders/inbox/messages");
+    expect(opts.$search).toBe('"from:alice@x.com"');
+    expect(matches.map((m) => m.id)).toEqual(["m1", "m2"]); // deduped
+  });
+
+  it("uses $filter on receivedDateTime for a date-only condition", async () => {
+    const list = mock(() => Promise.resolve({ value: [{ id: "m1" }] }));
+    const mail = new MailClient(makeGraphClient({ list }));
+    await mail.findMatches([{ olderThanDays: 10 }], "inbox", 200);
+    const [, opts] = list.mock.calls[0] as [string, Record<string, unknown>];
+    expect(String(opts.$filter)).toContain("receivedDateTime lt ");
+    expect(opts.$search).toBeUndefined();
+  });
+
+  it("applies olderThanDays client-side when combined with search terms", async () => {
+    const recent = new Date().toISOString();
+    const old = new Date(Date.now() - 40 * 86400_000).toISOString();
+    const list = mock(() =>
+      Promise.resolve({
+        value: [
+          { id: "old", receivedDateTime: old },
+          { id: "recent", receivedDateTime: recent },
+        ],
+      })
+    );
+    const mail = new MailClient(makeGraphClient({ list }));
+    const matches = await mail.findMatches(
+      [{ from: "alice@x.com", olderThanDays: 10 }],
+      "inbox",
+      200
+    );
+    expect(matches.map((m) => m.id)).toEqual(["old"]);
+  });
+
+  it("stops at max", async () => {
+    const list = mock(() =>
+      Promise.resolve({ value: [{ id: "a" }, { id: "b" }, { id: "c" }] })
+    );
+    const mail = new MailClient(makeGraphClient({ list }));
+    const matches = await mail.findMatches([{ from: "x@y.com" }], "inbox", 2);
+    expect(matches).toHaveLength(2);
+  });
+});
