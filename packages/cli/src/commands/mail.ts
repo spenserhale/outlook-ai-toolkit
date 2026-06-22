@@ -8,12 +8,15 @@ import {
   renderOutput,
   BodyFormatSchema,
   ListBodyModeSchema,
+  SweepConditionsSchema,
   type BodyFormat,
   type ListBodyMode,
   type CreateMessageRuleParams,
   type UpdateMessageRuleParams,
   type MessageRulePredicates,
   type MessageRuleActions,
+  type SweepCondition,
+  type MassMoveParams,
 } from "@outlook-toolkit/sdk";
 import { resolveCliConfig } from "../context.js";
 
@@ -424,7 +427,132 @@ const rulesRoutes = buildRouteMap({
   docs: { brief: "Manage inbox rules (messageRules)" },
 });
 
+function buildConditions(flags: {
+  conditions?: string;
+  from?: string;
+  subjectContains?: string;
+  bodyContains?: string;
+  olderThanDays?: number;
+}): SweepCondition[] {
+  let raw: unknown;
+  if (flags.conditions) {
+    try {
+      raw = JSON.parse(flags.conditions);
+    } catch (err) {
+      console.error(`error: invalid JSON for --conditions (exit code 2): ${(err as Error).message}`);
+      process.exit(2);
+    }
+  } else {
+    raw = [
+      {
+        ...(flags.from && { from: flags.from }),
+        ...(flags.subjectContains && { subjectContains: flags.subjectContains }),
+        ...(flags.bodyContains && { bodyContains: flags.bodyContains }),
+        ...(flags.olderThanDays !== undefined && { olderThanDays: flags.olderThanDays }),
+      },
+    ];
+  }
+  const parsed = SweepConditionsSchema.safeParse(raw);
+  if (!parsed.success) {
+    console.error(`error: invalid conditions (exit code 2): ${parsed.error.errors.map((e) => e.message).join("; ")}`);
+    process.exit(2);
+  }
+  return parsed.data;
+}
+
+async function runMassMove(
+  profile: string | undefined,
+  params: MassMoveParams,
+  json: boolean
+): Promise<void> {
+  const mail = await getMailClient(profile);
+  const result = await mail.massMove(params);
+  console.log(renderOutput(result, json ? "json" : "toon"));
+  if (result.capped) {
+    process.stderr.write(
+      `\nMatched at least ${result.matched} (hit --max). Raise --max to sweep more.\n`
+    );
+  }
+}
+
+const massMoveFlags = {
+  profile: { kind: "parsed", brief: "Profile name", parse: String, optional: true },
+  from: { kind: "parsed", brief: "Sender contains (single condition)", parse: String, optional: true },
+  subjectContains: { kind: "parsed", brief: "Subject contains (single condition)", parse: String, optional: true },
+  bodyContains: { kind: "parsed", brief: "Body contains (single condition)", parse: String, optional: true },
+  olderThanDays: { kind: "parsed", brief: "Only mail older than N days", parse: Number, optional: true },
+  conditions: { kind: "parsed", brief: "Conditions JSON array (overrides single-condition flags)", parse: String, optional: true },
+  folder: { kind: "parsed", brief: "Source folder (default: inbox)", parse: String, optional: true },
+  max: { kind: "parsed", brief: "Max messages to move (default: 200)", parse: Number, optional: true },
+  dryRun: { kind: "boolean", brief: "Preview matches without moving", default: false },
+  json: { kind: "boolean", brief: "Output as JSON", default: false },
+} as const;
+
+type MassMoveFlags = {
+  profile?: string; from?: string; subjectContains?: string; bodyContains?: string;
+  olderThanDays?: number; conditions?: string; folder?: string; max?: number;
+  to?: string; dryRun: boolean; json: boolean;
+};
+
+const massArchiveCommand = buildCommand({
+  docs: { brief: "Move existing inbox mail matching conditions to Archive" },
+  parameters: {
+    flags: {
+      ...massMoveFlags,
+      to: { kind: "parsed", brief: "Destination folder (default: archive)", parse: String, optional: true },
+    },
+  },
+  async func(this: void, flags: MassMoveFlags) {
+    const conditions = buildConditions(flags);
+    await runMassMove(
+      flags.profile,
+      {
+        conditions,
+        destination: flags.to ?? "archive",
+        folder: flags.folder ?? "inbox",
+        max: flags.max ?? 200,
+        dryRun: flags.dryRun,
+      },
+      flags.json
+    );
+  },
+});
+
+const massDeleteCommand = buildCommand({
+  docs: { brief: "Move existing inbox mail matching conditions to Deleted Items" },
+  parameters: {
+    flags: {
+      ...massMoveFlags,
+      to: { kind: "parsed", brief: "Destination folder (default: deleteditems)", parse: String, optional: true },
+    },
+  },
+  async func(this: void, flags: MassMoveFlags) {
+    const conditions = buildConditions(flags);
+    await runMassMove(
+      flags.profile,
+      {
+        conditions,
+        destination: flags.to ?? "deleteditems",
+        folder: flags.folder ?? "inbox",
+        max: flags.max ?? 200,
+        dryRun: flags.dryRun,
+      },
+      flags.json
+    );
+  },
+});
+
 export const mailRoutes = buildRouteMap({
-  routes: { list: listCommand, get: getCommand, send: sendCommand, reply: replyCommand, draft: draftCommand, sync: syncCommand, rules: rulesRoutes },
+  routes: {
+    list: listCommand,
+    get: getCommand,
+    send: sendCommand,
+    reply: replyCommand,
+    draft: draftCommand,
+    sync: syncCommand,
+    rules: rulesRoutes,
+    "mass-archive": massArchiveCommand,
+    "mass-delete": massDeleteCommand,
+  },
   docs: { brief: "Read and send Outlook mail" },
 });
