@@ -153,7 +153,9 @@ export class MailClient {
         { responses: Array<{ id: string; status: number }> }
       >("/$batch", { requests });
       for (const r of res.responses) {
-        const originalId = chunk[Number(r.id)]!;
+        const idx = Number(r.id);
+        const originalId = Number.isInteger(idx) ? chunk[idx] : undefined;
+        if (originalId === undefined) continue; // malformed/unknown batch id — skip
         if (r.status >= 200 && r.status < 300) result.moved++;
         else result.failed.push({ id: originalId, status: r.status });
       }
@@ -161,6 +163,14 @@ export class MailClient {
     return result;
   }
 
+  /**
+   * Find messages matching any of `conditions` (OR across conditions), deduped by id,
+   * bounded by `max`. Conditions are evaluated in order against a shared `max` budget,
+   * so a high-volume earlier condition can exhaust the budget before later ones run.
+   * Pagination is capped by a 50-page guard per condition; when combined with
+   * `olderThanDays` + keyword search, heavily-filtered pages may hit that guard and
+   * return fewer than `max` even when more old matches exist deeper in the result set.
+   */
   async findMatches(
     conditions: SweepCondition[],
     folder: string,

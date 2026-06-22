@@ -5,11 +5,16 @@ import type { SweepCondition } from "./types.js";
  * Returns null when the condition has no keyword fields (date-only) — callers
  * fall back to a $filter on receivedDateTime in that case.
  */
+// Embedded double-quotes would break the caller's `"<query>"` $search wrapper.
+function sanitize(value: string): string {
+  return value.replace(/"/g, "");
+}
+
 export function buildSearchQuery(c: SweepCondition): string | null {
   const parts: string[] = [];
-  if (c.from) parts.push(`from:${c.from}`);
-  if (c.subjectContains) parts.push(`subject:${c.subjectContains}`);
-  if (c.bodyContains) parts.push(`body:${c.bodyContains}`);
+  if (c.from) parts.push(`from:${sanitize(c.from)}`);
+  if (c.subjectContains) parts.push(`subject:${sanitize(c.subjectContains)}`);
+  if (c.bodyContains) parts.push(`body:${sanitize(c.bodyContains)}`);
   return parts.length ? parts.join(" AND ") : null;
 }
 

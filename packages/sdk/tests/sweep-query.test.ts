@@ -15,6 +15,10 @@ describe("buildSearchQuery", () => {
   it("emits only the provided fields", () => {
     expect(buildSearchQuery({ from: "alice@x.com" })).toBe("from:alice@x.com");
   });
+
+  it("strips embedded double-quotes that would break the $search wrapper", () => {
+    expect(buildSearchQuery({ subjectContains: 'He said "hi"' })).toBe("subject:He said hi");
+  });
 });
 
 describe("isoDaysAgo", () => {

@@ -233,6 +233,35 @@ describe("MailClient.move / moveBatch", () => {
     expect(post.mock.calls).toHaveLength(0);
     expect(result.moved).toBe(0);
   });
+
+  it("moveBatch correlates failures by response id across chunk boundaries and out of order", async () => {
+    const ids = Array.from({ length: 22 }, (_, i) => `id${i}`); // 20 + 2
+    let call = 0;
+    const post = mock(() => {
+      call++;
+      if (call === 1) {
+        // first chunk: all succeed, returned out of order
+        return Promise.resolve({
+          responses: [
+            { id: "5", status: 200 },
+            { id: "0", status: 200 },
+            ...Array.from({ length: 19 }, (_, k) => ({ id: String(k + 1), status: 200 })).filter((x) => x.id !== "5"),
+          ],
+        });
+      }
+      // second chunk (id20, id21): index 1 fails
+      return Promise.resolve({
+        responses: [
+          { id: "1", status: 404 },
+          { id: "0", status: 200 },
+        ],
+      });
+    });
+    const mail = new MailClient(makeGraphClient({ post }));
+    const result = await mail.moveBatch(ids, "archive");
+    expect(result.moved).toBe(21);
+    expect(result.failed).toEqual([{ id: "id21", status: 404 }]); // chunk2[1] = id21
+  });
 });
 
 describe("MailClient.findMatches", () => {
