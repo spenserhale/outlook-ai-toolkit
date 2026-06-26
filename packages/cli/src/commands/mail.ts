@@ -34,7 +34,9 @@ function parseListBody(s: string): ListBodyMode {
 
 async function getGraphClient(profile?: string): Promise<GraphClient> {
   const config = await resolveCliConfig(profile);
-  const store = new TokenStore(config.clientId);
+  const effectiveProfile = profile ?? process.env.OUTLOOK_PROFILE;
+  const tokenKey = effectiveProfile ?? config.clientId;
+  const store = new TokenStore(tokenKey);
   const auth = new OutlookAuth(config, store);
   let token: string;
   try {

@@ -29,7 +29,9 @@ const loginCommand = buildCommand({
   },
   async func(this: void, flags: { profile?: string }) {
     const config = await resolveCliConfig(flags.profile);
-    const store = new TokenStore(config.clientId);
+    const effectiveProfile = flags.profile ?? process.env.OUTLOOK_PROFILE;
+    const tokenKey = effectiveProfile ?? config.clientId;
+    const store = new TokenStore(tokenKey);
     const auth = new OutlookAuth(config, store);
     try {
       const { userEmail } = await auth.login(openBrowser);
@@ -55,7 +57,9 @@ const logoutCommand = buildCommand({
   },
   async func(this: void, flags: { profile?: string }) {
     const config = await resolveCliConfig(flags.profile);
-    const store = new TokenStore(config.clientId);
+    const effectiveProfile = flags.profile ?? process.env.OUTLOOK_PROFILE;
+    const tokenKey = effectiveProfile ?? config.clientId;
+    const store = new TokenStore(tokenKey);
     const auth = new OutlookAuth(config, store);
     await auth.logout();
     console.log("Signed out.");
@@ -81,7 +85,9 @@ const statusCommand = buildCommand({
   },
   async func(this: void, flags: { profile?: string; json: boolean }) {
     const config = await resolveCliConfig(flags.profile);
-    const store = new TokenStore(config.clientId);
+    const effectiveProfile = flags.profile ?? process.env.OUTLOOK_PROFILE;
+    const tokenKey = effectiveProfile ?? config.clientId;
+    const store = new TokenStore(tokenKey);
     const auth = new OutlookAuth(config, store);
     const status = await auth.status();
 
