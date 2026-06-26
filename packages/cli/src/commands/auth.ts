@@ -1,19 +1,7 @@
 import { buildCommand, buildRouteMap } from "@stricli/core";
 import { OutlookAuth, TokenStore } from "@outlook-toolkit/sdk";
 import { resolveCliConfig } from "../context.js";
-import { exec } from "node:child_process";
-
-function openBrowser(url: string): void {
-  const cmd =
-    process.platform === "darwin"
-      ? `open "${url}"`
-      : process.platform === "win32"
-      ? `start "" "${url}"`
-      : `xdg-open "${url}"`;
-  exec(cmd, () => {});
-  process.stderr.write(`Opening browser for Microsoft sign-in...\n`);
-  process.stderr.write(`If browser does not open, visit:\n${url}\n`);
-}
+import { openBrowser } from "../browser.js";
 
 const loginCommand = buildCommand({
   docs: { brief: "Sign in to an Outlook account (interactive browser flow)" },
