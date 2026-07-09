@@ -40,6 +40,7 @@ const AGENT_CONTEXT = {
       "mass-archive": { brief: "Move existing inbox mail matching conditions to Archive", flags: { "--from": "string", "--subjectContains": "string", "--bodyContains": "string", "--olderThanDays": "number", "--conditions": "json array (overrides single-condition flags)", "--to": "string (default: archive)", "--folder": "string (default: inbox)", "--max": "number (default: 200)", "--dryRun": "boolean", "--json": "boolean", "--profile": "string (optional)" } },
       "mass-delete": { brief: "Move existing inbox mail matching conditions to Deleted Items", flags: { "--from": "string", "--subjectContains": "string", "--bodyContains": "string", "--olderThanDays": "number", "--conditions": "json array (overrides single-condition flags)", "--to": "string (default: deleteditems)", "--folder": "string (default: inbox)", "--max": "number (default: 200)", "--dryRun": "boolean", "--json": "boolean", "--profile": "string (optional)" } },
     },
+    upgrade: { brief: "Upgrade the CLI to the latest release (standalone binary only)", flags: { "--check": "boolean", "--force": "boolean", "--version": "string (optional, e.g. 0.1.1)" } },
   },
   exit_codes: {
     0: "success",

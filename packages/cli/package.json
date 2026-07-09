@@ -3,18 +3,19 @@
   "version": "0.1.0",
   "type": "module",
   "bin": {
-    "outlook": "src/bin.ts"
+    "outlook": "src/bin.ts",
+    "omail": "src/omail.ts"
   },
   "scripts": {
     "dev": "bun run src/bin.ts",
     "build": "bun build ./src/bin.ts --outdir ./dist --target node",
+    "build:binary": "bun build ./src/bin.ts --compile --minify --sourcemap --outfile ./dist/outlook",
     "test": "bun test",
     "lint": "tsc --noEmit"
   },
   "dependencies": {
     "@outlook-toolkit/sdk": "workspace:*",
-    "@stricli/core": "^1.0.0",
-    "@toon-format/toon": "^2.1.0"
+    "@stricli/core": "^1.0.0"
   },
   "devDependencies": {
     "typescript": "^5.7.0",

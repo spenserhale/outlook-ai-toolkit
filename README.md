@@ -4,6 +4,63 @@ SDK, CLI, and MCP server for Microsoft Outlook via Microsoft Graph.
 
 Supports personal accounts (outlook.com / MSA) and work/school accounts (Entra ID / Microsoft 365). Uses delegated OAuth 2.0 with PKCE — no client secret, tokens stored encrypted in your OS keychain.
 
+## Packages
+
+| Package | Description |
+|---------|-------------|
+| [`@outlook-toolkit/sdk`](./packages/sdk) | Core SDK with types, auth, Graph client, and mail operations |
+| [`@outlook-toolkit/cli`](./packages/cli) | Command-line interface (Stricli) |
+| [`@outlook-toolkit/mcp`](./packages/mcp) | MCP server for AI assistants (FastMCP) |
+
+## Install the CLI
+
+### Recommended: standalone binary
+
+No Node.js, no npm, no PATH conflicts. One file.
+
+**macOS and Linux:**
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/spenserhale/outlook-ai-toolkit/main/scripts/install.sh | sh
+```
+
+The script detects your OS + architecture, downloads the matching binary from
+the [latest release](https://github.com/spenserhale/outlook-ai-toolkit/releases/latest),
+verifies its SHA256, and installs to `$HOME/.local/bin/outlook`. Pin a specific
+version with `OUTLOOK_TOOLKIT_VERSION=v0.1.1` or change the install directory
+with `OUTLOOK_TOOLKIT_INSTALL=$HOME/bin`.
+
+**Windows:** download `outlook-windows-x64.exe` from the
+[latest release](https://github.com/spenserhale/outlook-ai-toolkit/releases/latest)
+and put it on your `PATH`.
+
+**Updating:** re-run the install command, or use the built-in:
+
+```sh
+outlook upgrade          # install latest
+outlook upgrade --check  # check without installing
+```
+
+Available binaries: `outlook-linux-{x64,arm64}`, `outlook-darwin-{x64,arm64}`,
+`outlook-windows-x64.exe`. A `.sha256` sits next to each one; an aggregated
+`SHASUMS256.txt` is attached to the release.
+
+After install, run `outlook --help` or `outlook agent-context --json` to see
+every command. Use `outlook` directly instead of `bun run dev:cli --` in the
+examples below (e.g. `outlook mail list`, `outlook auth login`).
+
+### Alternative: build from source
+
+```sh
+git clone https://github.com/spenserhale/outlook-ai-toolkit.git
+cd outlook-ai-toolkit
+bun install
+bun run build
+```
+
+Before you can sign in, you still need a one-time [Azure App
+Registration](#azure-app-registration) to get a `client_id`.
+
 ---
 
 ## Prerequisites
@@ -23,7 +80,8 @@ You need a Microsoft Entra app registration to get a `client_id`. This is a one-
    - Personal accounts only → *Personal Microsoft accounts only*
    - Work/school + personal → *Accounts in any organizational directory and personal Microsoft accounts*
    - Work/school only → *Accounts in this organizational directory only*
-4. **Redirect URI:** Platform = **Mobile and desktop applications**, URI = `http://localhost`
+4. **Redirect URI:** Platform = **Mobile and desktop applications**, URI = `http://localhost/callback`
+   - The `/callback` path is required — it's where the CLI's local callback server listens. Azure ignores the port for loopback URIs on this platform, so the toolkit's random port is fine, but the path must match exactly.
 5. After creating, copy the **Application (client) ID**
 6. Go to **Authentication** → enable **Allow public client flows** → Save
 7. Go to **API permissions** → Add the following **Microsoft Graph delegated** permissions:
@@ -32,17 +90,6 @@ You need a Microsoft Entra app registration to get a `client_id`. This is a one-
    - `Mail.Send`
    - `User.Read`
    - `offline_access` (usually pre-added)
-
----
-
-## Installation
-
-```bash
-git clone <repo>
-cd outlook-toolkit
-bun install
-bun run build
-```
 
 ---
 
@@ -106,11 +153,30 @@ bun run dev:cli -- mail draft --to=someone@example.com --subject="Draft" --body=
 # Paginate
 bun run dev:cli -- mail list --limit=50 --cursor=<nextLink>
 
-# JSON output
-bun run dev:cli -- mail list --json
-
 # Machine-readable CLI schema (for agents)
 bun run dev:cli -- agent-context
+```
+
+### Output formats
+
+`mail` commands render [TOON](https://github.com/toon-format/toon) by default (compact, token-efficient — ideal for agents). Pick another format with a flag:
+
+```bash
+bun run dev:cli -- mail list            # TOON (default)
+bun run dev:cli -- mail list --json     # JSON
+bun run dev:cli -- mail list --csv      # CSV (mail list only)
+```
+
+### Message body control
+
+`mail list` and `mail get` can shape how message bodies are returned:
+
+```bash
+# How much body to include (mail list only): none | preview | full (default: preview)
+bun run dev:cli -- mail list --body=full
+
+# Body format: text | markdown | html (default: text)
+bun run dev:cli -- mail get <id> --bodyFormat=markdown
 ```
 
 ### Sign out
@@ -171,8 +237,8 @@ To switch between personal and work accounts, save named profiles:
 
 ```bash
 # Save profiles
-bun run dev:cli -- profile save personal --client-id=abc123 --tenant-id=consumers
-bun run dev:cli -- profile save work --client-id=xyz789 --tenant-id=<your-tenant-guid>
+bun run dev:cli -- profile save personal --clientId=abc123 --tenantId=consumers
+bun run dev:cli -- profile save work --clientId=xyz789 --tenantId=<your-tenant-guid>
 
 # Use a profile
 bun run dev:cli -- --profile=personal auth login
