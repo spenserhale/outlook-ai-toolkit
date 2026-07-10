@@ -18,7 +18,7 @@ import {
   type SweepCondition,
   type MassMoveParams,
 } from "@outlook-toolkit/sdk";
-import { resolveCliConfig } from "../context.js";
+import { requireContext } from "../context.js";
 
 function parseBodyFormat(s: string): BodyFormat {
   const r = BodyFormatSchema.safeParse(s);
@@ -33,16 +33,14 @@ function parseListBody(s: string): ListBodyMode {
 }
 
 async function getGraphClient(profile?: string): Promise<GraphClient> {
-  const config = await resolveCliConfig(profile);
-  const effectiveProfile = profile ?? process.env.OUTLOOK_PROFILE;
-  const tokenKey = effectiveProfile ?? config.clientId;
+  const { config, tokenKey } = await requireContext(profile);
   const store = new TokenStore(tokenKey);
   const auth = new OutlookAuth(config, store);
   let token: string;
   try {
     token = await auth.acquireToken();
   } catch {
-    console.error("error: not authenticated (exit code 5). Run: outlook auth login");
+    console.error("error: not signed in (exit code 5). Run: outlook login");
     process.exit(5);
   }
   return new GraphClient(token);

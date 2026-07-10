@@ -47,7 +47,7 @@ Available binaries: `outlook-linux-{x64,arm64}`, `outlook-darwin-{x64,arm64}`,
 
 After install, run `outlook --help` or `outlook agent-context --json` to see
 every command. Use `outlook` directly instead of `bun run dev:cli --` in the
-examples below (e.g. `outlook mail list`, `outlook auth login`).
+examples below (e.g. `outlook mail list`, `outlook login`).
 
 ### Alternative: build from source
 
@@ -65,8 +65,8 @@ Registration](#azure-app-registration) to get a `client_id`.
 
 ## Prerequisites
 
-- [Bun](https://bun.sh) ≥ 1.0
-- A registered Azure application (see below)
+- A registered Azure application (see below) — needed to get a `client_id`
+- [Bun](https://bun.sh) ≥ 1.0 — only if building from source (the standalone binary needs nothing)
 
 ---
 
@@ -93,13 +93,80 @@ You need a Microsoft Entra app registration to get a `client_id`. This is a one-
 
 ---
 
-## Configuration
+## Getting started
 
-Copy `.env.example` to `.env` and fill in your values:
+**Run this first:**
 
-```bash
-cp .env.example .env
+```sh
+outlook login
 ```
+
+On the first run it walks you through a one-time setup: it asks for your Azure
+app **Client ID** (see [Azure App Registration](#azure-app-registration) to
+create one — ~2 min), saves it as your default profile, and opens the browser
+for Microsoft sign-in. Tokens are stored in your OS keychain (macOS Keychain /
+Windows Credential Store / Linux Secret Service). After that, `outlook login`
+just signs you in.
+
+```sh
+outlook status     # who am I signed in as?
+outlook logout     # sign out and clear tokens
+```
+
+> Running from source instead of the installed binary? Use `bun run dev:cli --`
+> in place of `outlook` (e.g. `bun run dev:cli -- login`).
+
+### Common commands
+
+```sh
+# List inbox (default: 25 messages)
+outlook mail list
+
+# Get a specific message
+outlook mail get <id>
+
+# Send email
+outlook mail send --to=someone@example.com --subject="Hello" --body="<p>Hi</p>"
+
+# Reply to a message
+outlook mail reply <id> --body="<p>Thanks</p>"
+
+# Create a draft
+outlook mail draft --to=someone@example.com --subject="Draft" --body="<p>Draft body</p>"
+
+# Paginate
+outlook mail list --limit=50 --cursor=<nextLink>
+
+# Machine-readable CLI schema (for agents)
+outlook agent-context --json
+```
+
+### Output formats
+
+`mail` commands render [TOON](https://github.com/toon-format/toon) by default (compact, token-efficient — ideal for agents). Pick another format with a flag:
+
+```sh
+outlook mail list            # TOON (default)
+outlook mail list --json     # JSON
+outlook mail list --csv      # CSV (mail list only)
+```
+
+### Message body control
+
+`mail list` and `mail get` can shape how message bodies are returned:
+
+```sh
+# How much body to include (mail list only): none | preview | full (default: preview)
+outlook mail list --body=full
+
+# Body format: text | markdown | html (default: text)
+outlook mail get <id> --bodyFormat=markdown
+```
+
+### Configuration via environment (optional)
+
+Instead of the guided `outlook login` setup, you can supply credentials through
+the environment or a `.env` file — handy for scripting and CI:
 
 ```
 OUTLOOK_CLIENT_ID=your-azure-app-client-id
@@ -114,76 +181,7 @@ OUTLOOK_TENANT_ID=consumers
 | `common` | Personal + work/school (multi-tenant) |
 | `<guid>` | A specific Entra ID tenant (work/school only) |
 
----
-
-## CLI Setup
-
-### Authenticate
-
-```bash
-bun run dev:cli -- auth login
-```
-
-This opens your browser for the Microsoft sign-in flow. After completing sign-in, tokens are saved to your OS keychain (macOS Keychain / Windows Credential Store / Linux Secret Service).
-
-### Verify
-
-```bash
-bun run dev:cli -- auth status
-```
-
-### Common commands
-
-```bash
-# List inbox (default: 25 messages)
-bun run dev:cli -- mail list
-
-# Get a specific message
-bun run dev:cli -- mail get <id>
-
-# Send email
-bun run dev:cli -- mail send --to=someone@example.com --subject="Hello" --body="<p>Hi</p>"
-
-# Reply to a message
-bun run dev:cli -- mail reply <id> --body="<p>Thanks</p>"
-
-# Create a draft
-bun run dev:cli -- mail draft --to=someone@example.com --subject="Draft" --body="<p>Draft body</p>"
-
-# Paginate
-bun run dev:cli -- mail list --limit=50 --cursor=<nextLink>
-
-# Machine-readable CLI schema (for agents)
-bun run dev:cli -- agent-context
-```
-
-### Output formats
-
-`mail` commands render [TOON](https://github.com/toon-format/toon) by default (compact, token-efficient — ideal for agents). Pick another format with a flag:
-
-```bash
-bun run dev:cli -- mail list            # TOON (default)
-bun run dev:cli -- mail list --json     # JSON
-bun run dev:cli -- mail list --csv      # CSV (mail list only)
-```
-
-### Message body control
-
-`mail list` and `mail get` can shape how message bodies are returned:
-
-```bash
-# How much body to include (mail list only): none | preview | full (default: preview)
-bun run dev:cli -- mail list --body=full
-
-# Body format: text | markdown | html (default: text)
-bun run dev:cli -- mail get <id> --bodyFormat=markdown
-```
-
-### Sign out
-
-```bash
-bun run dev:cli -- auth logout
-```
+With those set, `outlook login` skips the prompt and signs you straight in.
 
 ---
 
@@ -208,13 +206,13 @@ Add the MCP server to your Claude Desktop config at `~/Library/Application Suppo
 
 Replace `/absolute/path/to/outlook-toolkit` with the actual path on your machine.
 
-**Before using MCP tools**, authenticate once via the CLI:
+**Before using MCP tools**, sign in once via the CLI:
 
-```bash
-bun run dev:cli -- auth login
+```sh
+outlook login
 ```
 
-The MCP server reads the saved tokens — it cannot open a browser itself. If a tool reports "not authenticated", run `auth login` from the CLI and try again.
+The MCP server reads the saved tokens — it cannot open a browser itself. If a tool reports "not authenticated", run `outlook login` from the CLI and try again.
 
 ### Available MCP tools
 
@@ -233,20 +231,26 @@ The MCP server reads the saved tokens — it cannot open a browser itself. If a 
 
 ## Multiple Accounts (Profiles)
 
-To switch between personal and work accounts, save named profiles:
+Your first `outlook login` creates a `default` profile. To add more accounts,
+use `profile add` — it saves the profile and signs in, prompting for the Client
+ID if you don't pass `--clientId`:
 
-```bash
-# Save profiles
-bun run dev:cli -- profile save personal --clientId=abc123 --tenantId=consumers
-bun run dev:cli -- profile save work --clientId=xyz789 --tenantId=<your-tenant-guid>
+```sh
+# Add named accounts (each opens a browser sign-in)
+outlook profile add personal --clientId=abc123 --tenantId=consumers
+outlook profile add work --clientId=xyz789 --tenantId=<your-tenant-guid>
 
-# Use a profile
-bun run dev:cli -- --profile=personal auth login
-bun run dev:cli -- --profile=work auth login
+outlook profile list                 # see saved profiles
 
-bun run dev:cli -- --profile=personal mail list
-bun run dev:cli -- --profile=work mail list
+# Target a profile with --profile
+outlook mail list --profile=personal
+outlook mail list --profile=work
+outlook login --profile=work         # re-authenticate a profile
 ```
+
+Set `OUTLOOK_PROFILE=work` to make a profile the default for a shell session.
+(`profile save` is the non-interactive variant — it stores a profile without
+signing in, for scripting.)
 
 For MCP, run separate server instances with different env vars:
 
@@ -286,7 +290,7 @@ Each instance maintains its own token cache keyed by `client_id`.
 | 2 | Invalid flag or argument |
 | 3 | Missing config (`OUTLOOK_CLIENT_ID` / `OUTLOOK_TENANT_ID`) |
 | 4 | Not found |
-| 5 | Not authenticated — run `auth login` |
+| 5 | Not authenticated — run `outlook login` |
 | 6 | Rate limited |
 
 ---

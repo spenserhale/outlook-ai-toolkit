@@ -29,7 +29,7 @@ export function registerAuthTools(server: FastMCP) {
       if (!status) {
         return JSON.stringify({
           authenticated: false,
-          message: `Not authenticated. Run \`outlook auth login\` in your terminal with OUTLOOK_CLIENT_ID=${config.clientId} set.`,
+          message: `Not authenticated. Run \`outlook login\` in your terminal with OUTLOOK_CLIENT_ID=${config.clientId} set.`,
         }, null, 2);
       }
       return JSON.stringify({
@@ -49,7 +49,7 @@ export function registerAuthTools(server: FastMCP) {
     execute: async () => {
       const { auth } = getAuth();
       await auth.logout();
-      return JSON.stringify({ status: "signed_out", message: "Signed out. Run `outlook auth login` to re-authenticate." }, null, 2);
+      return JSON.stringify({ status: "signed_out", message: "Signed out. Run `outlook login` to re-authenticate." }, null, 2);
     },
   });
 }

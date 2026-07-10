@@ -263,7 +263,7 @@ export class OutlookAuth {
 
     if (now > data.refreshTokenExpiry) {
       await this.store.clear();
-      throw new OutlookAuthError("Session expired. Run `outlook auth login` again.");
+      throw new OutlookAuthError("Session expired. Run `outlook login` again.");
     }
 
     if (now < data.accessTokenExpiry - REFRESH_THRESHOLD_MS) {

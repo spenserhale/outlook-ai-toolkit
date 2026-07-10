@@ -17,7 +17,7 @@ export class OutlookConfigError extends OutlookError {
 }
 
 export class OutlookAuthError extends OutlookError {
-  constructor(message = "Not authenticated. Run `outlook auth login` first.") {
+  constructor(message = "Not authenticated. Run `outlook login` first.") {
     super(message, "AUTH_ERROR", 401);
     this.name = "OutlookAuthError";
   }

@@ -6,20 +6,21 @@ const AGENT_CONTEXT = {
   description: "Outlook toolkit — read and write Outlook mail via Microsoft Graph",
   config: {
     env_vars: {
-      OUTLOOK_CLIENT_ID: { required: true, description: "Azure app registration client ID" },
-      OUTLOOK_TENANT_ID: { required: true, description: "Tenant ID: consumers | common | <guid>" },
+      OUTLOOK_CLIENT_ID: { required: false, description: "Azure app registration client ID (required for non-interactive use if no profile is saved)" },
+      OUTLOOK_TENANT_ID: { required: false, description: "Tenant ID: consumers | common | <guid> (required alongside OUTLOOK_CLIENT_ID)" },
       OUTLOOK_PROFILE: { required: false, description: "Named profile to activate" },
     },
-    precedence: ["explicit-flag", "env-var", "named-profile", "error"],
+    precedence: ["explicit-flag", "env-var", "default-profile", "guided-setup"],
   },
+  first_run: "Run `outlook login` to sign in. Non-interactive callers must set OUTLOOK_CLIENT_ID and OUTLOOK_TENANT_ID (or `outlook profile save`) first.",
   commands: {
-    auth: {
-      login: { brief: "Interactive browser PKCE sign-in", flags: { "--profile": "string (optional)" } },
-      logout: { brief: "Clear saved tokens", flags: { "--profile": "string (optional)" } },
-      status: { brief: "Show auth status", flags: { "--profile": "string (optional)", "--json": "boolean" } },
-    },
+    login: { brief: "Sign in (guided setup on first run)", flags: { "--profile": "string (optional)" } },
+    logout: { brief: "Sign out and clear saved tokens", flags: { "--profile": "string (optional)" } },
+    status: { brief: "Show sign-in status", flags: { "--profile": "string (optional)", "--json": "boolean" } },
     profile: {
-      save: { brief: "Save a named profile", args: ["name"], flags: { "--clientId": "string", "--tenantId": "string" } },
+      add: { brief: "Add a named profile and sign in (prompts for client ID if interactive)", args: ["name"], flags: { "--clientId": "string (optional)", "--tenantId": "string (default: consumers)" } },
+      create: { brief: "Alias of `add`", args: ["name"], flags: { "--clientId": "string (optional)", "--tenantId": "string (default: consumers)" } },
+      save: { brief: "Save a profile without signing in (scripting)", args: ["name"], flags: { "--clientId": "string", "--tenantId": "string" } },
       list: { brief: "List profiles", flags: { "--json": "boolean" } },
       delete: { brief: "Delete a profile", args: ["name"], flags: { "--force": "boolean" } },
     },
@@ -48,7 +49,7 @@ const AGENT_CONTEXT = {
     2: "validation error",
     3: "config error (missing OUTLOOK_CLIENT_ID or OUTLOOK_TENANT_ID)",
     4: "not found",
-    5: "auth error (run: outlook auth login)",
+    5: "auth error (run: outlook login)",
     6: "rate limited",
   },
 };

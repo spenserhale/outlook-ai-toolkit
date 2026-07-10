@@ -34,7 +34,7 @@ async function getMailClient(): Promise<MailClient> {
   } catch (err) {
     if (err instanceof OutlookAuthError) {
       throw new Error(
-        `Not authenticated. Run \`outlook auth login\` in your terminal with OUTLOOK_CLIENT_ID=${config.clientId} set.`
+        `Not authenticated. Run \`outlook login\` in your terminal with OUTLOOK_CLIENT_ID=${config.clientId} set.`
       );
     }
     throw err;
