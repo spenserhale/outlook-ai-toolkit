@@ -24,6 +24,6 @@ const routes = buildRouteMap({
 export const app = buildApplication(routes, {
   name: "outlook",
   versionInfo: {
-    currentVersion: "0.1.0",
+    currentVersion: "0.1.1",
   },
 });
